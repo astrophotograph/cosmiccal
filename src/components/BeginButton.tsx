@@ -7,11 +7,15 @@ interface RipplePosition {
   id: number;
 }
 
+// Define the possible button states
+type ButtonState = 'begin' | 'next' | 'startOver';
+
 const BeginButton = () => {
   const [isPulsing, setPulsing] = useState(true);
   const [ripples, setRipples] = useState<RipplePosition[]>([]);
   const [rippleCount, setRippleCount] = useState(0);
-  const [isStarted, setIsStarted] = useState(false);
+  const [buttonState, setButtonState] = useState<ButtonState>('begin');
+  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
 
   // Toggle pulsing state for animation
   useEffect(() => {
@@ -32,20 +36,52 @@ const BeginButton = () => {
     return () => clearTimeout(timeoutId);
   }, [ripples]);
 
+  // Listen for the stage completion event from the grid
+  useEffect(() => {
+    const handleStageComplete = (event: Event) => {
+      const { stage } = (event as CustomEvent).detail;
+
+      if (stage === 'initialZoom') {
+        setButtonState('next');
+      } else if (stage === 'lastMonth') {
+        setButtonState('startOver');
+      } else if (stage === 'resetComplete') {
+        setButtonState('begin');
+        setCurrentMonthIndex(0);
+      }
+    };
+
+    window.addEventListener('gridStageComplete', handleStageComplete);
+    return () => {
+      window.removeEventListener('gridStageComplete', handleStageComplete);
+    };
+  }, []);
+
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     createRipple(e);
 
-    // Toggle the state and dispatch the appropriate event
-    setIsStarted(prevState => {
-      const newState = !prevState;
-
-      // Dispatch custom event to signal grid animation with the current state
-      window.dispatchEvent(new CustomEvent('toggleGridAnimation', {
-        detail: { isResetting: newState }
+    if (buttonState === 'begin') {
+      // Initial zoom in to the grid
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: { action: 'initialZoom' }
       }));
+    } else if (buttonState === 'next') {
+      // Move to the next month
+      const nextMonthIndex = currentMonthIndex + 1;
+      setCurrentMonthIndex(nextMonthIndex);
 
-      return newState;
-    });
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: {
+          action: 'focusMonth',
+          monthIndex: nextMonthIndex
+        }
+      }));
+    } else if (buttonState === 'startOver') {
+      // Reset to original position
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: { action: 'reset' }
+      }));
+    }
   };
 
   const createRipple = (e: MouseEvent<HTMLButtonElement>) => {
@@ -70,6 +106,13 @@ const BeginButton = () => {
     setRipples([...ripples, newRipple]);
     setRippleCount(prev => prev + 1);
   };
+
+  // Determine button text based on state
+  const buttonText = {
+    'begin': 'Begin',
+    'next': 'Next',
+    'startOver': 'Start Over'
+  }[buttonState];
 
   return (
     <button
@@ -97,7 +140,7 @@ const BeginButton = () => {
           }}
         />
       ))}
-      {isStarted ? 'Start Over' : 'Begin'}
+      {buttonText}
     </button>
   );
 };
