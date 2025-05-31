@@ -1,8 +1,14 @@
 import * as THREE from 'three';
 
+export type DateImageEntry = {
+  date: Date;
+  imageUrl: string;
+};
+
 export type GridRectangleProps = {
   width: number;
   height: number;
+  dateImages?: DateImageEntry[];
 };
 
 export type MonthPosition = {

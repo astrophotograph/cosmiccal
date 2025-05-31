@@ -1,195 +1,100 @@
 import * as THREE from 'three';
-import type { GridRefs } from './types';
+import type { GridRefs, DateImageEntry } from './types';
 
-// Helper to get days in a month
-export const getDaysInMonth = (month: number, year = new Date().getFullYear()): number => {
-  return new Date(year, month + 1, 0).getDate();
+// Helper function to get the number of days in a month
+export const getDaysInMonth = (monthIndex: number): number => {
+  const year = new Date().getFullYear();
+  // The day 0 of the next month is the last day of the current month
+  return new Date(year, monthIndex + 1, 0).getDate();
 };
 
-// Create a month cell with its label
+// Create a month cell with a border
 export const createMonthCell = (
-  monthIndex: number,
-  monthName: string,
-  cellWidth: number,
-  cellHeight: number,
+  index: number,
+  name: string,
+  width: number,
+  height: number,
   x: number,
   y: number,
   row: number
 ): THREE.Group => {
-  const monthCell = new THREE.Group();
-  monthCell.position.set(x, y, 0);
+  const group = new THREE.Group();
+  group.position.set(x, y, 0);
 
-  // Create the cell rectangle
-  const geometry = new THREE.PlaneGeometry(cellWidth, cellHeight);
+  // Create the cell background
+  const geometry = new THREE.PlaneGeometry(width, height);
   const material = new THREE.MeshBasicMaterial({
     color: 0x2d3748,
-    side: THREE.DoubleSide,
-    wireframe: false
+    side: THREE.DoubleSide
   });
 
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(0, 0, 0);
-  monthCell.add(mesh);
+  const background = new THREE.Mesh(geometry, material);
+  background.position.set(0, 0, 0);
+  group.add(background);
 
-  // Add normal border
-  const borderMaterial = new THREE.LineBasicMaterial({ color: 0x4a5568 });
-  const border = new THREE.LineSegments(
-    new THREE.EdgesGeometry(geometry),
-    borderMaterial
-  );
-  border.position.set(0, 0, 0.01); // Slightly in front of the cell
-  monthCell.add(border);
-
-  // Add glowing border (initially hidden)
-  const glowMaterial = new THREE.LineBasicMaterial({
-    color: 0xFFD700, // Yellowish gold color
-    linewidth: 3,
+  // Create glowing border
+  const borderGeometry = new THREE.EdgesGeometry(geometry);
+  const borderMaterial = new THREE.LineBasicMaterial({
+    color: 0x4a5568,
     transparent: true,
-    opacity: 0.8
+    opacity: 0.7
   });
 
-  const glowBorder = new THREE.LineSegments(
-    new THREE.EdgesGeometry(geometry),
-    glowMaterial
-  );
-  glowBorder.position.set(0, 0, 0.05);
-  glowBorder.scale.set(1.03, 1.03, 1);
-  glowBorder.visible = false;
-  glowBorder.userData.isGlowBorder = true;
-  monthCell.add(glowBorder);
+  const border = new THREE.LineSegments(borderGeometry, borderMaterial);
+  border.position.set(0, 0, 0.01);
+  group.add(border);
 
-  return monthCell;
+  // Store data for this month
+  group.userData = {
+    monthIndex: index,
+    monthName: name,
+    row,
+    glowBorder: border,
+    borderMaterial
+  };
+
+  return group;
 };
 
-// Create month label
+// Create a text label for a month
 export const createMonthLabel = (
-  monthName: string,
+  name: string,
   cellWidth: number,
   cellHeight: number
 ): THREE.Mesh => {
+  // Create a canvas for the month name
   const canvas = document.createElement('canvas');
-  canvas.width = 1024 / 2;
-  canvas.height = 512 / 2;
+  canvas.width = 512;
+  canvas.height = 128;
   const context = canvas.getContext('2d');
 
-  if (!context) {
-    throw new Error('Could not get canvas context');
-  }
+  if (context) {
+    context.fillStyle = '#ffffff';
+    context.font = 'bold 70px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(name, 256, 64);
 
-  context.fillStyle = '#ffffff';
-  context.font = '80px Arial';
-  context.textAlign = 'left';
-  context.textBaseline = 'top';
-  context.fillText(monthName, 30, 20);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const labelGeometry = new THREE.PlaneGeometry(cellWidth * 0.75, cellHeight * 0.3);
-  const labelMaterial = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    side: THREE.DoubleSide,
-    opacity: 1
-  });
-
-  const label = new THREE.Mesh(labelGeometry, labelMaterial);
-  label.position.set(
-    -cellWidth * 0.08,
-    cellHeight * 0.28,
-    0.04
-  );
-
-  return label;
-};
-
-// Create days for a month
-export const createDaysForMonth = (
-  monthIndex: number,
-  monthName: string,
-  cellWidth: number,
-  cellHeight: number
-): THREE.Group => {
-  const dayGroup = new THREE.Group();
-  dayGroup.visible = false;
-
-  // Get days in this month
-  const daysInMonth = getDaysInMonth(monthIndex);
-
-  // 5 rows max and 7 columns for days
-  const dayRows = 5;
-  const dayCols = 7;
-
-  const dayWidth = cellWidth / dayCols;
-  const dayHeight = cellHeight / dayRows;
-
-  // Starting position (top-left corner)
-  const dayStartX = -cellWidth / 2 + dayWidth / 2;
-  const dayStartY = cellHeight / 2 - dayHeight / 2;
-
-  // Create days
-  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
-    // Calculate position (0-indexed, starting from top-left corner)
-    const dayCol = (dayNum - 1) % dayCols;
-    const dayRow = Math.floor((dayNum - 1) / dayCols);
-
-    const dayX = dayStartX + (dayCol * dayWidth);
-    const dayY = dayStartY - (dayRow * dayHeight);
-
-    // Create day cell
-    const dayGeometry = new THREE.PlaneGeometry(dayWidth * 0.9, dayHeight * 0.9);
-    const dayMaterial = new THREE.MeshBasicMaterial({
-      color: 0x3a4a5c,
-      side: THREE.DoubleSide,
+    const texture = new THREE.CanvasTexture(canvas);
+    const geometry = new THREE.PlaneGeometry(cellWidth * 0.8, cellHeight * 0.2);
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
       transparent: true,
-      opacity: 0
+      opacity: 1
     });
 
-    const dayMesh = new THREE.Mesh(dayGeometry, dayMaterial);
-    dayMesh.position.set(dayX, dayY, 0.03);
-
-    // Add day number
-    const dayCanvas = document.createElement('canvas');
-    dayCanvas.width = 128;
-    dayCanvas.height = 128;
-    const dayContext = dayCanvas.getContext('2d');
-
-    if (dayContext) {
-      dayContext.fillStyle = '#ffffff';
-      dayContext.font = '60px Arial';
-      dayContext.textAlign = 'center';
-      dayContext.textBaseline = 'middle';
-      dayContext.fillText(dayNum.toString(), 64, 64);
-
-      const dayTexture = new THREE.CanvasTexture(dayCanvas);
-      const dayLabelGeometry = new THREE.PlaneGeometry(dayWidth * 0.6, dayHeight * 0.6);
-      const dayLabelMaterial = new THREE.MeshBasicMaterial({
-        map: dayTexture,
-        transparent: true,
-        opacity: 0
-      });
-
-      const dayLabel = new THREE.Mesh(dayLabelGeometry, dayLabelMaterial);
-      dayLabel.position.set(0, 0, 0.01);
-      dayMesh.add(dayLabel);
-    }
-
-    // Store month and day data
-    dayMesh.userData = {
-      monthIndex,
-      monthName,
-      day: dayNum,
-      isDay: true,
-      dayMaterial,
-      labelMaterial: dayMesh.children[0]?.material as THREE.MeshBasicMaterial
-    };
-
-    dayGroup.add(dayMesh);
+    const label = new THREE.Mesh(geometry, material);
+    label.position.set(0, 0, 0.02);
+    return label;
   }
 
-  return dayGroup;
+  // Fallback if context fails
+  const geometry = new THREE.PlaneGeometry(0.1, 0.1);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  return new THREE.Mesh(geometry, material);
 };
 
-// Create the entire grid
-export const createGrid = (refs: GridRefs): THREE.Group => {
+export const createGrid = (refs: GridRefs, dateImages: DateImageEntry[] = []): THREE.Group => {
   const group = new THREE.Group();
 
   // Grid dimensions
@@ -255,7 +160,7 @@ export const createGrid = (refs: GridRefs): THREE.Group => {
       monthLabels.push(label);
 
       // Create and add days
-      const dayGroup = createDaysForMonth(index, months[index], cellWidth, cellHeight);
+      const dayGroup = createDaysForMonth(index, months[index], cellWidth, cellHeight, dateImages);
       monthCell.add(dayGroup);
       dayGroups.push(dayGroup);
     }
@@ -268,4 +173,117 @@ export const createGrid = (refs: GridRefs): THREE.Group => {
   refs.dayGroups.current = dayGroups;
 
   return group;
+};
+
+export const createDaysForMonth = (
+  monthIndex: number,
+  monthName: string,
+  cellWidth: number,
+  cellHeight: number,
+  dateImages: DateImageEntry[] = []
+): THREE.Group => {
+  const dayGroup = new THREE.Group();
+  dayGroup.visible = false;
+
+  // Get days in this month
+  const daysInMonth = getDaysInMonth(monthIndex);
+
+  // 5 rows max and 7 columns for days
+  const dayRows = 5;
+  const dayCols = 7;
+
+  const dayWidth = cellWidth / dayCols;
+  const dayHeight = cellHeight / dayRows;
+
+  // Starting position (top-left corner)
+  const dayStartX = -cellWidth / 2 + dayWidth / 2;
+  const dayStartY = cellHeight / 2 - dayHeight / 2;
+
+  // Get current year
+  const currentYear = new Date().getFullYear();
+
+  // Create a map of days with images for this month
+  const daysWithImages = new Map<number, string>();
+  dateImages.forEach(item => {
+    const date = item.date;
+    if (date.getMonth() === monthIndex) {
+      daysWithImages.set(date.getDate(), item.imageUrl);
+    }
+  });
+
+  // Create days
+  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+    // Calculate position (0-indexed, starting from top-left corner)
+    const dayCol = (dayNum - 1) % dayCols;
+    const dayRow = Math.floor((dayNum - 1) / dayCols);
+
+    const dayX = dayStartX + (dayCol * dayWidth);
+    const dayY = dayStartY - (dayRow * dayHeight);
+
+    // Check if this day has an image
+    const hasImage = daysWithImages.has(dayNum);
+
+    // Create day cell with highlight if it has an image
+    const dayGeometry = new THREE.PlaneGeometry(dayWidth * 0.9, dayHeight * 0.9);
+    const dayMaterial = new THREE.MeshBasicMaterial({
+      color: hasImage ? 0x4a9cff : 0x3a4a5c, // Highlight color for days with images
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0
+    });
+
+    const dayMesh = new THREE.Mesh(dayGeometry, dayMaterial);
+    dayMesh.position.set(dayX, dayY, 0.03);
+
+    // Add day number
+    const dayCanvas = document.createElement('canvas');
+    dayCanvas.width = 128;
+    dayCanvas.height = 128;
+    const dayContext = dayCanvas.getContext('2d');
+
+    if (dayContext) {
+      dayContext.fillStyle = '#ffffff';
+      dayContext.font = '60px Arial';
+      dayContext.textAlign = 'center';
+      dayContext.textBaseline = 'middle';
+      dayContext.fillText(dayNum.toString(), 64, 64);
+
+      // Add a small indicator for days with images
+      if (hasImage) {
+        dayContext.fillStyle = '#ffcc00';
+        dayContext.beginPath();
+        dayContext.arc(64, 100, 8, 0, Math.PI * 2);
+        dayContext.fill();
+      }
+
+      const dayTexture = new THREE.CanvasTexture(dayCanvas);
+      const dayLabelGeometry = new THREE.PlaneGeometry(dayWidth * 0.6, dayHeight * 0.6);
+      const dayLabelMaterial = new THREE.MeshBasicMaterial({
+        map: dayTexture,
+        transparent: true,
+        opacity: 0
+      });
+
+      const dayLabel = new THREE.Mesh(dayLabelGeometry, dayLabelMaterial);
+      dayLabel.position.set(0, 0, 0.01);
+      dayMesh.add(dayLabel);
+    }
+
+    // Store month and day data, including image URL if available
+    const imageUrl = daysWithImages.get(dayNum);
+    dayMesh.userData = {
+      monthIndex,
+      monthName,
+      day: dayNum,
+      isDay: true,
+      dayMaterial,
+      labelMaterial: dayMesh.children[0]?.material as THREE.MeshBasicMaterial,
+      hasImage,
+      imageUrl
+    };
+
+    dayGroup.add(dayMesh);
+  }
+
+  return dayGroup;
 };

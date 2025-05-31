@@ -1,13 +1,14 @@
 import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import type { GridRectangleProps, GridRefs } from './types';
+import type { GridRectangleProps, GridRefs, DateImageEntry } from './types';
 import { createGrid } from './gridCreator';
 import { updateGlowingBorders } from './animationUtils';
 import { handleMouseClick, handleGridAction } from './eventHandlers';
 
-const GridRectangle = ({ width, height }: GridRectangleProps) => {
+const GridRectangle = ({ width, height, dateImages = [] }: GridRectangleProps) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [animationInProgress, setAnimationInProgress] = useState(false);
+  const dateImagesRef = useRef<DateImageEntry[]>(dateImages);
 
   // Create all the refs needed for the grid
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -21,6 +22,11 @@ const GridRectangle = ({ width, height }: GridRectangleProps) => {
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
   const currentMonthIndexRef = useRef<number>(-1);
+
+  // Update dateImagesRef when dateImages prop changes
+  useEffect(() => {
+    dateImagesRef.current = dateImages;
+  }, [dateImages]);
 
   // Collect all refs into a single object for easier passing to functions
   const refs: GridRefs = {
@@ -85,7 +91,7 @@ const GridRectangle = ({ width, height }: GridRectangleProps) => {
     mountRef.current.appendChild(renderer.domElement);
 
     // Create the grid
-    const grid = createGrid(refs);
+    const grid = createGrid(refs, dateImagesRef.current);
     gridRef.current = grid;
     scene.add(grid);
 
