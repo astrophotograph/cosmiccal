@@ -11,6 +11,7 @@ const BeginButton = () => {
   const [isPulsing, setPulsing] = useState(true);
   const [ripples, setRipples] = useState<RipplePosition[]>([]);
   const [rippleCount, setRippleCount] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
 
   // Toggle pulsing state for animation
   useEffect(() => {
@@ -30,6 +31,22 @@ const BeginButton = () => {
 
     return () => clearTimeout(timeoutId);
   }, [ripples]);
+
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    createRipple(e);
+
+    // Toggle the state and dispatch the appropriate event
+    setIsStarted(prevState => {
+      const newState = !prevState;
+
+      // Dispatch custom event to signal grid animation with the current state
+      window.dispatchEvent(new CustomEvent('toggleGridAnimation', {
+        detail: { isResetting: newState }
+      }));
+
+      return newState;
+    });
+  };
 
   const createRipple = (e: MouseEvent<HTMLButtonElement>) => {
     const button = e.currentTarget;
@@ -63,7 +80,7 @@ const BeginButton = () => {
         transition: 'all 0.5s ease',
         boxShadow: '0 0 30px rgba(236, 72, 153, 0.8)',
       }}
-      onClick={createRipple}
+      onClick={handleClick}
     >
       {/* Ripple elements */}
       {ripples.map(ripple => (
@@ -80,7 +97,7 @@ const BeginButton = () => {
           }}
         />
       ))}
-      Begin
+      {isStarted ? 'Start Over' : 'Begin'}
     </button>
   );
 };

@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
+import { gsap } from 'gsap';
 
 type GridRectangleProps = {
   width: number;
@@ -8,21 +9,29 @@ type GridRectangleProps = {
 
 const GridRectangle = ({ width, height }: GridRectangleProps) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const gridRef = useRef<THREE.Group | null>(null);
+  const [animationInProgress, setAnimationInProgress] = useState(false);
 
   useEffect(() => {
     if (!mountRef.current) return;
 
     // Create scene, camera, and renderer
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     scene.background = new THREE.Color(0x1a202c); // Dark background
 
     // Use actual width and height
     const aspectRatio = 4/3; // width / height;
 
     const camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+    cameraRef.current = camera;
     camera.position.z = 5;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    rendererRef.current = renderer;
     renderer.setSize(width, height);
 
     // Clear any existing canvas to prevent duplication
@@ -127,35 +136,89 @@ const GridRectangle = ({ width, height }: GridRectangleProps) => {
     };
 
     const grid = createGrid();
+    gridRef.current = grid;
     scene.add(grid);
 
-    // Simple render function without animation
-    const render = () => {
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
       renderer.render(scene, camera);
     };
 
-    // Initial render
-    render();
+    animate();
+
+    // Event listener for button clicks
+    const handleToggleAnimation = (event: Event) => {
+      if (animationInProgress || !gridRef.current) return;
+      setAnimationInProgress(true);
+
+      // Get the detail to determine if we're resetting or starting
+      const detail = (event as CustomEvent).detail;
+      const isResetting = detail?.isResetting;
+
+      if (isResetting) {
+        // Reset the grid to its original position and rotation
+        gsap.to(gridRef.current.position, {
+          z: 0, // Original z position
+          duration: 1.5,
+          ease: 'power2.out'
+        });
+
+        gsap.to(gridRef.current.rotation, {
+          x: 0, // Original rotation
+          duration: 1.5,
+          ease: 'power2.out',
+          onComplete: () => {
+            setAnimationInProgress(false);
+          }
+        });
+      } else {
+        // Animate the grid to move toward camera and tilt by 30 degrees
+        gsap.to(gridRef.current.position, {
+          z: 2, // Move closer to camera
+          duration: 1.5,
+          ease: 'power2.out'
+        });
+
+        // Rotate the grid to tilt the top away from camera at 30 degrees
+        gsap.to(gridRef.current.rotation, {
+          x: THREE.MathUtils.degToRad(-30), // Negative angle to tilt top away
+          duration: 1.5,
+          ease: 'power2.out',
+          onComplete: () => {
+            setAnimationInProgress(false);
+          }
+        });
+      }
+    };
+
+    window.addEventListener('toggleGridAnimation', handleToggleAnimation);
 
     // Cleanup
     return () => {
-      if (mountRef.current && mountRef.current.contains(renderer.domElement)) {
-        mountRef.current.removeChild(renderer.domElement);
+      window.removeEventListener('toggleGridAnimation', handleToggleAnimation);
+
+      if (mountRef.current && rendererRef.current && mountRef.current.contains(rendererRef.current.domElement)) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
       }
 
       // Dispose of Three.js resources
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          if (object.material instanceof THREE.Material) {
-            object.material.dispose();
-          } else if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
+      if (sceneRef.current) {
+        sceneRef.current.traverse((object) => {
+          if (object instanceof THREE.Mesh) {
+            object.geometry.dispose();
+            if (object.material instanceof THREE.Material) {
+              object.material.dispose();
+            } else if (Array.isArray(object.material)) {
+              object.material.forEach(material => material.dispose());
+            }
           }
-        }
-      });
+        });
+      }
 
-      renderer.dispose();
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
     };
   }, [width, height]);
 
