@@ -16,14 +16,14 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a202c); // Dark background
 
-    // Make the container square by using the smaller dimension
-    const size = Math.min(width, height);
+    // Use actual width and height (not making it square)
+    const aspectRatio = width / height;
 
-    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Aspect ratio of 1 for square view
+    const camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
     camera.position.z = 5;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(size, size);
+    renderer.setSize(width, height);
 
     // Clear any existing canvas to prevent duplication
     while (mountRef.current.firstChild) {
@@ -39,11 +39,11 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
       // Grid dimensions
       const cols = 4;
       const rows = 3;
-      const spacing = 0.05;
+      const spacing = 0.04; // Reduced spacing to make rectangles larger
 
-      // For a square overall appearance, we need to adjust the aspect ratio
-      const totalWidth = 4; // Width of the entire grid
-      const totalHeight = 4; // Height of the entire grid (making it square)
+      // Keep the rectangle proportions (not square)
+      const totalWidth = 4.2; // Increased width of the entire grid
+      const totalHeight = 3.2; // Increased height of the entire grid
 
       const cellWidth = (totalWidth - (spacing * (cols - 1))) / cols;
       const cellHeight = (totalHeight - (spacing * (rows - 1))) / rows;
@@ -52,9 +52,19 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
       const startX = -(totalWidth / 2) + (cellWidth / 2);
       const startY = (totalHeight / 2) - (cellHeight / 2);
 
-      // Create rectangles
+      // Month names
+      const months = [
+        'January', 'February', 'March', 'April',
+        'May', 'June', 'July', 'August',
+        'September', 'October', 'November', 'December'
+      ];
+
+      // Create rectangles with month labels
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
+          const index = row * cols + col;
+          if (index >= months.length) continue;
+
           const geometry = new THREE.PlaneGeometry(cellWidth, cellHeight);
           const material = new THREE.MeshBasicMaterial({
             color: 0x2d3748,
@@ -79,6 +89,37 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
 
           group.add(mesh);
           group.add(border);
+
+          // Add month label in upper left corner
+          const canvas = document.createElement('canvas');
+          canvas.width = 512; // Increased canvas size for higher resolution
+          canvas.height = 256;
+          const context = canvas.getContext('2d');
+          if (context) {
+            context.fillStyle = '#e2e8f0';
+            context.font = 'bold 40px Arial'; // Larger font size
+            context.textAlign = 'left';
+            context.textBaseline = 'top';
+            context.fillText(months[index], 20, 15);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            // Maintain the same label size relative to cells
+            const labelGeometry = new THREE.PlaneGeometry(cellWidth * 0.7, cellHeight * 0.3);
+            const labelMaterial = new THREE.MeshBasicMaterial({
+              map: texture,
+              transparent: true,
+              side: THREE.DoubleSide
+            });
+
+            const label = new THREE.Mesh(labelGeometry, labelMaterial);
+            // Position label in the upper left of the cell
+            label.position.set(
+              x - (cellWidth * 0.15), // Move left from center
+              y + (cellHeight * 0.25), // Move up from center
+              0.02 // Slightly in front of the border
+            );
+            group.add(label);
+          }
         }
       }
 
@@ -102,10 +143,11 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
       const containerWidth = mountRef.current.clientWidth;
       const containerHeight = mountRef.current.clientHeight;
 
-      // Keep it square using the smaller dimension
-      const size = Math.min(containerWidth, containerHeight);
+      // Maintain aspect ratio
+      renderer.setSize(containerWidth, containerHeight);
+      camera.aspect = containerWidth / containerHeight;
+      camera.updateProjectionMatrix();
 
-      renderer.setSize(size, size);
       render(); // Re-render after resize
     };
 
@@ -140,8 +182,8 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
         ref={mountRef}
         style={{
           width: '100%',
-          maxWidth: `${Math.min(width, height)}px`,
-          aspectRatio: '1/1'
+          maxWidth: `${width}px`,
+          height: `${height}px`
         }}
         className="relative"
       />
