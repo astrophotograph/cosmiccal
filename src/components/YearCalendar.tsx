@@ -4,7 +4,7 @@ type CalendarProps = {
   year?: number;
 };
 
-const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
+export const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const months = [
@@ -44,7 +44,7 @@ const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
     const days = [];
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="h-8"></div>);
+      days.push(<div key={`empty-${i}`} className="h-6"></div>);
     }
 
     // Add days of the month
@@ -57,9 +57,9 @@ const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
         <div
           key={`day-${day}`}
           onClick={() => handleDateClick(day, monthIndex)}
-          className={`h-8 flex items-center justify-center rounded-full cursor-pointer transition-colors
-            ${isCurrentDay ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}
-            ${isSelectedDay ? 'bg-blue-200' : ''}
+          className={`h-6 flex items-center justify-center rounded-full cursor-pointer transition-colors text-xs
+            ${isCurrentDay ? 'bg-blue-600 text-white' : 'hover:bg-gray-700'}
+            ${isSelectedDay ? 'bg-blue-800 text-white' : ''}
           `}
         >
           {day}
@@ -68,19 +68,19 @@ const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
     }
 
     return (
-      <div key={monthIndex} className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="bg-gray-50 py-2 px-3 font-medium text-gray-700 border-b">
+      <div key={monthIndex} className="bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-700">
+        <div className="bg-gray-700 py-1 px-2 font-medium text-gray-200 border-b border-gray-600 text-sm">
           {months[monthIndex]}
         </div>
-        <div className="p-3">
+        <div className="p-2">
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-              <div key={day} className="text-xs text-center font-medium text-gray-500">
+              <div key={day} className="text-[10px] text-center font-medium text-gray-400">
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1 text-sm">
+          <div className="grid grid-cols-7 gap-1 text-gray-200">
             {days}
           </div>
         </div>
@@ -89,15 +89,10 @@ const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-gray-800">{year} Calendar</h1>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="p-2">
+      <div className="grid grid-cols-4 gap-3">
         {months.map((_, index) => renderMonth(index))}
       </div>
     </div>
   );
 };
-
-export default YearCalendar;
