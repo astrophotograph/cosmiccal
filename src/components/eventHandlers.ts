@@ -28,6 +28,18 @@ export const handleMouseClick = (
 
     if (dayData) {
       console.log(`Clicked on ${dayData.monthName} ${dayData.day}`);
+
+      // If the day has an image, show the popup
+      if (dayData.hasImage && dayData.imageUrl) {
+        // Dispatch a custom event with the image URL
+        window.dispatchEvent(new CustomEvent('showImagePopup', {
+          detail: {
+            imageUrl: dayData.imageUrl,
+            date: `${dayData.monthName} ${dayData.day}`
+          }
+        }));
+      }
+
       break;
     }
   }

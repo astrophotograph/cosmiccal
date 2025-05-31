@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import GridRectangle from './components/GridRectangle';
 import BeginButton from './components/BeginButton';
+import ImagePopup from './components/ImagePopup';
 import type { DateImageEntry } from './components/types';
 
 function App() {
@@ -9,6 +10,9 @@ function App() {
     width: window.innerWidth,
     height: window.innerHeight - 50 // Reserve space for footer
   });
+
+  // State for the image popup
+  const [popupImage, setPopupImage] = useState<{imageUrl: string; date: string} | null>(null);
 
   // Create example array of dates and images
   const exampleDateImages: DateImageEntry[] = [
@@ -76,6 +80,19 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Event listener for showing the image popup
+  useEffect(() => {
+    const handleShowImagePopup = (event: CustomEvent) => {
+      setPopupImage(event.detail);
+    };
+
+    window.addEventListener('showImagePopup', handleShowImagePopup as EventListener);
+
+    return () => {
+      window.removeEventListener('showImagePopup', handleShowImagePopup as EventListener);
+    };
+  }, []);
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-900">
       <div className="absolute inset-0" style={{ bottom: '50px' }}>
@@ -89,6 +106,15 @@ function App() {
       <footer className="fixed bottom-0 left-0 w-full h-[50px] py-3 bg-gray-800 text-gray-400 text-center text-sm z-50">
         <p>© {currentYear} the authors. All rights reserved.</p>
       </footer>
+
+      {/* Render the image popup when an image is clicked */}
+      {popupImage && (
+        <ImagePopup
+          imageUrl={popupImage.imageUrl}
+          date={popupImage.date}
+          onClose={() => setPopupImage(null)}
+        />
+      )}
     </div>
   );
 }
