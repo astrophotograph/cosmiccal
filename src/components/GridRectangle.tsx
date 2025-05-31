@@ -39,11 +39,11 @@ const GridRectangle = ({ width, height }: GridRectangleProps) => {
       // Grid dimensions
       const cols = 4;
       const rows = 3;
-      const spacing = 0.04; // Reduced spacing to make rectangles larger
+      const spacing = 0.03; // Further reduced spacing to make rectangles larger
 
       // Size based on aspect ratio to fill the screen
-      const totalWidth = 4.2; // Base width
-      const totalHeight = 3.2; // Fixed height for 4x3 grid
+      const totalWidth = 4.8; // Increased from 4.2
+      const totalHeight = 3.6; // Increased from 3.2
 
       const cellWidth = (totalWidth - (spacing * (cols - 1))) / cols;
       const cellHeight = (totalHeight - (spacing * (rows - 1))) / rows;

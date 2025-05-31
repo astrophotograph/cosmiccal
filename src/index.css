@@ -16,3 +16,15 @@ body {
     transform-style: preserve-3d;
     transition: transform 1s;
 }
+
+/* Ripple effect animation */
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.animate-ripple {
+    animation: ripple 0.8s linear forwards;
+}
