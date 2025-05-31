@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type CalendarProps = {
   year?: number;
@@ -6,6 +6,16 @@ type CalendarProps = {
 
 export const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showTilt, setShowTilt] = useState(false);
+
+  // Add effect to trigger the tilt animation after a delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTilt(true);
+    }, 2000); // 2 second delay
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -88,9 +98,11 @@ export const YearCalendar = ({ year = new Date().getFullYear() }: CalendarProps)
     );
   };
 
+  const calendarClass = `p-2 transition-all duration-5000 ${showTilt ? 'transform-3d-tilted' : ''}`;
+
   return (
-    <div className="p-2">
-      <div className="grid grid-cols-4 gap-3">
+    <div className={calendarClass}>
+      <div className="grid grid-cols-4">
         {months.map((_, index) => renderMonth(index))}
       </div>
     </div>
