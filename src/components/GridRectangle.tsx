@@ -2,11 +2,11 @@ import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 
 type GridRectangleProps = {
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
 };
 
-const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
+const GridRectangle = ({ width, height }: GridRectangleProps) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,8 +16,8 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a202c); // Dark background
 
-    // Use actual width and height (not making it square)
-    const aspectRatio = width / height;
+    // Use actual width and height
+    const aspectRatio = 4/3; // width / height;
 
     const camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
     camera.position.z = 5;
@@ -41,9 +41,9 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
       const rows = 3;
       const spacing = 0.04; // Reduced spacing to make rectangles larger
 
-      // Keep the rectangle proportions (not square)
-      const totalWidth = 4.2; // Increased width of the entire grid
-      const totalHeight = 3.2; // Increased height of the entire grid
+      // Size based on aspect ratio to fill the screen
+      const totalWidth = 4.2; // Base width
+      const totalHeight = 3.2; // Fixed height for 4x3 grid
 
       const cellWidth = (totalWidth - (spacing * (cols - 1))) / cols;
       const cellHeight = (totalHeight - (spacing * (rows - 1))) / rows;
@@ -90,21 +90,21 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
           group.add(mesh);
           group.add(border);
 
-          // Add month label in upper left corner
+          // Add month label in upper left corner - MUCH LARGER TEXT
           const canvas = document.createElement('canvas');
-          canvas.width = 512; // Increased canvas size for higher resolution
-          canvas.height = 256;
+          canvas.width = 1024 / 2; // Much higher resolution
+          canvas.height = 512 / 2;
           const context = canvas.getContext('2d');
           if (context) {
-            context.fillStyle = '#e2e8f0';
-            context.font = 'bold 40px Arial'; // Larger font size
+            context.fillStyle = '#ffffff'; // Brighter white for better visibility
+            context.font = '80px Arial'; // Much larger font size
             context.textAlign = 'left';
             context.textBaseline = 'top';
-            context.fillText(months[index], 20, 15);
+            context.fillText(months[index], 30, 20);
 
             const texture = new THREE.CanvasTexture(canvas);
-            // Maintain the same label size relative to cells
-            const labelGeometry = new THREE.PlaneGeometry(cellWidth * 0.7, cellHeight * 0.3);
+            // Larger label size
+            const labelGeometry = new THREE.PlaneGeometry(cellWidth * 0.8, cellHeight * 0.35);
             const labelMaterial = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
@@ -114,8 +114,8 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
             const label = new THREE.Mesh(labelGeometry, labelMaterial);
             // Position label in the upper left of the cell
             label.position.set(
-              x - (cellWidth * 0.15), // Move left from center
-              y + (cellHeight * 0.25), // Move up from center
+              x - (cellWidth * 0.1), // Move left from center (less to make it more visible)
+              y + (cellHeight * 0.3), // Move up from center
               0.02 // Slightly in front of the border
             );
             group.add(label);
@@ -137,25 +137,8 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
     // Initial render
     render();
 
-    // Handle resize
-    const handleResize = () => {
-      if (!mountRef.current) return;
-      const containerWidth = mountRef.current.clientWidth;
-      const containerHeight = mountRef.current.clientHeight;
-
-      // Maintain aspect ratio
-      renderer.setSize(containerWidth, containerHeight);
-      camera.aspect = containerWidth / containerHeight;
-      camera.updateProjectionMatrix();
-
-      render(); // Re-render after resize
-    };
-
-    window.addEventListener('resize', handleResize);
-
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
       if (mountRef.current && mountRef.current.contains(renderer.domElement)) {
         mountRef.current.removeChild(renderer.domElement);
       }
@@ -177,17 +160,13 @@ const GridRectangle = ({ width = 800, height = 600 }: GridRectangleProps) => {
   }, [width, height]);
 
   return (
-    <div className="flex justify-center items-center">
-      <div
-        ref={mountRef}
-        style={{
-          width: '100%',
-          maxWidth: `${width}px`,
-          height: `${height}px`
-        }}
-        className="relative"
-      />
-    </div>
+    <div
+      ref={mountRef}
+      style={{
+        width: '100%',
+        height: '100%'
+      }}
+    />
   );
 };
 

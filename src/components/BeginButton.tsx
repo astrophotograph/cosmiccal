@@ -13,12 +13,12 @@ const BeginButton = () => {
 
   return (
     <button
-      className={`fixed bottom-8 right-8 px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 
-                text-white font-bold rounded-full shadow-lg text-xl z-50
+      className={`fixed bottom-16 right-16 px-10 py-5 bg-gradient-to-r from-pink-500 to-purple-600 
+                text-white font-bold rounded-full shadow-lg text-2xl z-[100]
                 ${isPulsing ? 'animate-pulse scale-105' : 'scale-100'}`}
       style={{
         transition: 'all 0.5s ease',
-        boxShadow: '0 0 20px rgba(236, 72, 153, 0.7)'
+        boxShadow: '0 0 30px rgba(236, 72, 153, 0.8)'
       }}
     >
       Begin
