@@ -441,20 +441,28 @@ export const focusOnDecemberSecondHalf = (
 
   // Calculate the middle day index for the second half
   const middleIndex = Math.floor((startIndex + endIndex) / 2); // Around December 23-24
-  const middleDayPosition = dayGroup.children[middleIndex].position.clone();
 
-  // Use a more subtle zoom
-  const additionalZoom = 1.3; // Reduced from 1.6
+  // Use getWorldPosition for more accuracy
+  const middlePosition = new THREE.Vector3();
+  dayGroup.children[middleIndex].getWorldPosition(middlePosition);
+
+  // Convert to local grid space
+  const gridWorldPosition = new THREE.Vector3();
+  refs.grid.current.getWorldPosition(gridWorldPosition);
+  const localPosition = middlePosition.clone().sub(gridWorldPosition);
+  localPosition.divide(refs.grid.current.scale);
+
+  // Use a very subtle zoom
+  const additionalZoom = 1.15; // Even more reduced
   const currentZoom = refs.grid.current.scale.x;
   const newZoom = currentZoom * additionalZoom;
 
-  // Adjust the vertical position to show the second half
-  // Use a multiplier to control how much we shift down
-  const yAdjustment = 0.4; // Controls how much we move down
+  // Only adjust the vertical position slightly
+  const yAdjustment = 0.3; // Controls how much we move down
 
   gsap.to(refs.grid.current.position, {
     // Only adjust Y position to move down to the second half
-    y: refs.grid.current.position.y - middleDayPosition.y * additionalZoom * yAdjustment,
+    y: refs.grid.current.position.y - localPosition.y * yAdjustment,
     duration: 1.2,
     ease: 'power2.inOut'
   });
@@ -469,7 +477,6 @@ export const focusOnDecemberSecondHalf = (
     onComplete
   });
 };
-
 // Zoom in on December 31st and show hours
 export const focusOnDecember31WithHours = (
   refs: GridRefs,
@@ -486,34 +493,46 @@ export const focusOnDecember31WithHours = (
   if (dayGroup.children.length <= dec31Index) return;
 
   const dec31Cell = dayGroup.children[dec31Index];
-  const dec31Position = dec31Cell.position.clone();
 
-  // Calculate zoom for December 31st - using a more moderate zoom
-  const additionalZoom = 2.0; // Reduced from 2.5
-  const currentZoom = refs.grid.current.scale.x;
-  const newZoom = currentZoom * additionalZoom;
+  // Get the world position of the December 31 cell
+  // This requires calculating based on all the transforms currently applied
+  const dec31Position = new THREE.Vector3();
+  dec31Cell.getWorldPosition(dec31Position);
 
-  // Log positions for debugging
-  console.log('December 31 position:', dec31Position);
+  // Convert world position to local position relative to the grid
+  // since that's the space we're manipulating
+  const gridWorldPosition = new THREE.Vector3();
+  refs.grid.current.getWorldPosition(gridWorldPosition);
+
+  // Calculate local position
+  const localPosition = dec31Position.clone().sub(gridWorldPosition);
+
+  // Scale it by the current grid scale
+  localPosition.divide(refs.grid.current.scale);
+
+  // Use a fixed zoom amount for more predictable results
+  const newZoom = 7.0; // This is an absolute value, not relative to current zoom
+
+  // Log for debugging
+  console.log('Dec 31 local position:', localPosition);
   console.log('Current grid position:', refs.grid.current.position);
+  console.log('Current grid scale:', refs.grid.current.scale);
 
-  // First, determine the absolute position we want to center on
-  // We need to account for the current grid position and scale
+  // Move the grid to center on Dec 31
   gsap.to(refs.grid.current.position, {
-    // For x position, we only need a small adjustment since we're already focused on December
-    x: refs.grid.current.position.x - dec31Position.x * additionalZoom * 0.8,
-    // For y position, we need to center on December 31st specifically
-    y: refs.grid.current.position.y - dec31Position.y * additionalZoom * 0.8,
-    duration: 1.2,
+    // Center the grid on Dec 31
+    x: -localPosition.x * newZoom,
+    y: -localPosition.y * newZoom,
+    duration: 1.5,
     ease: 'power2.inOut'
   });
 
-  // Apply the zoom
+  // Set a fixed, absolute zoom level
   gsap.to(refs.grid.current.scale, {
     x: newZoom,
     y: newZoom,
     z: newZoom,
-    duration: 1.2,
+    duration: 1.5,
     ease: 'power2.inOut',
     onComplete: () => {
       // Fade out the 31st day cell and its label
