@@ -308,6 +308,13 @@ export const focusOnMonth = (
 ): void => {
   if (!refs.grid.current || monthIndex < 0 || monthIndex >= refs.monthPositions.current.length) return;
 
+  // Hide the Earth globe if it exists
+  const septemberIndex = 8;
+  if (refs.monthCells.current[septemberIndex]?.userData.earthGlobe) {
+    const globe = refs.monthCells.current[septemberIndex].userData.earthGlobe;
+    globe.visible = false;
+  }
+
   const monthPosition = refs.monthPositions.current[monthIndex];
   const tiltAngle = refs.grid.current.rotation.x;
 
@@ -342,7 +349,7 @@ export const focusOnMonth = (
   });
 };
 
-// Update the resetGrid function to properly handle removing the globe
+// Update the resetGrid function to properly handle the globe visibility
 export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current) return;
 
@@ -351,26 +358,12 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     hideMonthDays(refs, refs.currentMonthIndex.current);
   }
 
-  // Find and remove the Earth globe if it exists
-  const septemberIndex = 8;
-  if (refs.monthCells.current[septemberIndex]?.userData.earthGlobe) {
-    const globe = refs.monthCells.current[septemberIndex].userData.earthGlobe;
-
-    // Fade out and remove the globe
-    gsap.to(globe.scale, {
-      x: 0.001,
-      y: 0.001,
-      z: 0.001,
-      duration: 1,
-      ease: 'power2.in',
-      onComplete: () => {
-        if (refs.scene.current) {
-          refs.scene.current.remove(globe);
-        }
-        delete refs.monthCells.current[septemberIndex].userData.earthGlobe;
-      }
-    });
-  }
+  // Find the Earth globe if it exists and make it visible again
+  // const septemberIndex = 8;
+  // if (refs.monthCells.current[septemberIndex]?.userData.earthGlobe) {
+  //   const globe = refs.monthCells.current[septemberIndex].userData.earthGlobe;
+  //   globe.visible = true;
+  // }
 
   // Hide all glowing borders
   refs.monthCells.current.forEach(monthCell => {
@@ -390,7 +383,6 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     });
   }
 
-  // Rest of the existing resetGrid function...
   // Make sure all month labels are visible
   refs.monthLabels.current.forEach(label => {
     label.visible = true;
