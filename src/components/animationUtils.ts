@@ -21,13 +21,15 @@ export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): 
   const earthGeometry = new THREE.SphereGeometry(0.5, 32, 32);
   const earthMaterial = new THREE.MeshPhongMaterial({
     map: earthTexture,
-    specular: new THREE.Color(0x333333),
-    shininess: 5,
+    specular: new THREE.Color(0x777777), // Brighter specular color for more shininess
+    shininess: 25, // Increased from 5 to 25 for more reflectivity
     transparent: true,
     opacity: 0,
-    // emissiveMap: nightTexture,
-    // emissive: new THREE.Color(0xffffff),
-    // emissiveIntensity: 1.2,
+    // Add bump mapping for more realistic surface detail
+    bumpMap: textureLoader.load('/textures/earth_bumpmap.jpg'),
+    bumpScale: 0.05,
+    // Optional: add specular map if available
+    // specularMap: textureLoader.load('/textures/02_earthspec1k.jpg'),
   });
 
   const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
@@ -60,12 +62,18 @@ export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): 
   // Tilt the globe slightly to match the grid's perspective
   earthGroup.rotation.x = gridTiltAngle * 0.5;
 
-  // Add lighting for the globe
-  const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
-  sunLight.position.set(5, 3, 5);
+  // Add lighting for the globe - position above and to the right
+  const sunLight = new THREE.DirectionalLight(0xffffff, 1.5); // Increased intensity from 1.2 to 1.5
+  sunLight.position.set(3, 5, 2); // Repositioned to be above and to the right of the viewer
   earthGroup.add(sunLight);
 
-  const ambientLight = new THREE.AmbientLight(0x555555);
+  // Add a subtle highlight with a second light
+  const highlightLight = new THREE.DirectionalLight(0xffffdd, 0.6);
+  highlightLight.position.set(4, 3, -2);
+  earthGroup.add(highlightLight);
+
+  // Slightly brighter ambient light to enhance overall visibility
+  const ambientLight = new THREE.AmbientLight(0x666666); // Brightened from 0x555555 to 0x666666
   earthGroup.add(ambientLight);
 
   // Add the globe to the scene
@@ -109,13 +117,13 @@ export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): 
   });
 
   // Add a subtle floating animation for better visibility
-  gsap.to(earthGroup.position, {
-    y: earthGroup.position.y + 0.1,
-    duration: 3,
-    yoyo: true,
-    repeat: -1,
-    ease: "sine.inOut"
-  });
+  // gsap.to(earthGroup.position, {
+  //   y: earthGroup.position.y + 0.1,
+  //   duration: 3,
+  //   yoyo: true,
+  //   repeat: -1,
+  //   ease: "sine.inOut"
+  // });
 
   // Store reference to remove later if needed
   sepCell.userData.earthGlobe = earthGroup;
