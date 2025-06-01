@@ -17,7 +17,64 @@ type PopupProps = {
 const ImagePopup = ({imageUrl, date, text, isOpen, onClose}: PopupProps) => {
   if (!imageUrl || !date) return null
 
-  console.log({ imageUrl, date, text, isOpen})
+  // Parse the date string to extract month and day
+  const dateParts = date.split(' ');
+  if (dateParts.length !== 2) return null;
+
+  const monthName = dateParts[0];
+  const day = parseInt(dateParts[1]);
+
+  // Map months to their order in the year (0-indexed)
+  const monthOrder = {
+    'January': 0,
+    'February': 1,
+    'March': 2,
+    'April': 3,
+    'May': 4,
+    'June': 5,
+    'July': 6,
+    'August': 7,
+    'September': 8,
+    'October': 9,
+    'November': 10,
+    'December': 11
+  };
+
+  // Age of the universe in billions of years
+  const universeAge = 13.8;
+
+  // Calculate the universe age at this date
+  // There are 365 days in a year
+  const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+  // Calculate days from start of year
+  let dayOfYear = day;
+  for (let i = 0; i < monthOrder[monthName as keyof typeof monthOrder]; i++) {
+    dayOfYear += daysInMonth[i];
+  }
+
+  // Calculate the fraction of the year that has passed
+  const yearFraction = (dayOfYear - 1) / 365;
+
+  // Calculate the universe age at this point
+  const ageAtThisPoint = universeAge * yearFraction;
+
+  // Format the age with proper units (billions or millions of years)
+  let ageDisplay;
+  if (ageAtThisPoint < 0.001) {
+    // If less than a million years, show in thousands
+    ageDisplay = `${(ageAtThisPoint * 1000000).toFixed(2)} thousand years`;
+  } else if (ageAtThisPoint < 1) {
+    // If less than a billion, show in millions
+    ageDisplay = `${(ageAtThisPoint * 1000).toFixed(2)} million years`;
+  } else {
+    // Otherwise show in billions
+    ageDisplay = `${ageAtThisPoint.toFixed(2)} billion years`;
+  }
+
+  const formattedTitle = `${date} - Age of Universe: ${ageDisplay}`;
+
+  console.log({ imageUrl, date, text, isOpen });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -25,7 +82,7 @@ const ImagePopup = ({imageUrl, date, text, isOpen, onClose}: PopupProps) => {
         className="max-w-4xl max-h-[90vh] overflow-auto bg-gray-800"
         showCloseButton={true}
       >
-        <DialogTitle className="text-xl text-white font-semibold">{date}</DialogTitle>
+        <DialogTitle className="text-xl text-white font-semibold">{formattedTitle}</DialogTitle>
         <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
           {text && (
             <div className="prose prose-invert prose-sm max-w-none px-4 py-3 bg-gray-700 rounded-md md:flex-1">
