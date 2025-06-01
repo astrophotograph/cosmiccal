@@ -418,3 +418,575 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     }
   });
 };
+
+// Zoom in on second half of December
+export const focusOnDecemberSecondHalf = (
+  refs: GridRefs,
+  onComplete: () => void
+): void => {
+  if (!refs.grid.current) return;
+
+  // December index (11 in zero-based indexing)
+  const decemberIndex = 11;
+
+  // First focus on December month
+  focusOnMonth(refs, decemberIndex, () => {
+    // Once December is focused, zoom in on the second half
+    const dayGroup = refs.dayGroups.current[decemberIndex];
+    if (!dayGroup) return;
+
+    // Find the day cell for December 16th (index 15)
+    const startDayIndex = 15;
+    if (dayGroup.children.length <= startDayIndex) return;
+
+    const day16Position = dayGroup.children[startDayIndex].position.clone();
+
+    // Calculate additional zoom level
+    const additionalZoom = 1.8;
+    const currentZoom = refs.grid.current.scale.x;
+    const newZoom = currentZoom * additionalZoom;
+
+    // Calculate the position to center on December 16-31
+    gsap.to(refs.grid.current.position, {
+      x: refs.grid.current.position.x - day16Position.x * additionalZoom * 0.5,
+      duration: 1.2,
+      ease: 'power2.inOut'
+    });
+
+    // Zoom in further
+    gsap.to(refs.grid.current.scale, {
+      x: newZoom,
+      y: newZoom,
+      z: newZoom,
+      duration: 1.2,
+      ease: 'power2.inOut',
+      onComplete
+    });
+  });
+};
+
+// Zoom in on December 31st and show hours
+export const focusOnDecember31WithHours = (
+  refs: GridRefs,
+  onComplete: () => void
+): void => {
+  if (!refs.grid.current) return;
+
+  const decemberIndex = 11;
+  const dayGroup = refs.dayGroups.current[decemberIndex];
+  if (!dayGroup) return;
+
+  // December 31st (index 30)
+  const dec31Index = 30;
+  if (dayGroup.children.length <= dec31Index) return;
+
+  const dec31Cell = dayGroup.children[dec31Index];
+  const dec31Position = dec31Cell.position.clone();
+
+  // Calculate zoom for December 31st
+  const additionalZoom = 2.5;
+  const currentZoom = refs.grid.current.scale.x;
+  const newZoom = currentZoom * additionalZoom;
+
+  // Center on December 31st
+  gsap.to(refs.grid.current.position, {
+    x: refs.grid.current.position.x - dec31Position.x * additionalZoom,
+    y: refs.grid.current.position.y - dec31Position.y * additionalZoom,
+    duration: 1.2,
+    ease: 'power2.inOut'
+  });
+
+  // Zoom in further
+  gsap.to(refs.grid.current.scale, {
+    x: newZoom,
+    y: newZoom,
+    z: newZoom,
+    duration: 1.2,
+    ease: 'power2.inOut',
+    onComplete: () => {
+      // Fade out the 31st day cell and its label
+      if (dec31Cell.userData.dayMaterial && dec31Cell.userData.labelMaterial) {
+        gsap.to(dec31Cell.userData.dayMaterial, {
+          opacity: 0,
+          duration: 0.5,
+          ease: 'power1.out'
+        });
+
+        gsap.to(dec31Cell.userData.labelMaterial, {
+          opacity: 0,
+          duration: 0.5,
+          ease: 'power1.out',
+          onComplete: () => {
+            // Create and show 24 rectangles representing hours
+            createHourRectangles(refs, dec31Cell, onComplete);
+          }
+        });
+      }
+    }
+  });
+};
+
+// Create 24 rectangles representing hours
+const createHourRectangles = (
+  refs: GridRefs,
+  dayCell: THREE.Object3D,
+  onComplete: () => void
+): void => {
+  if (!refs.scene.current) return;
+
+  // Create a group to hold all hour rectangles
+  const hoursGroup = new THREE.Group();
+  hoursGroup.position.copy(dayCell.position);
+
+  // Size of the original day cell
+  const cellWidth = 0.9;
+  const cellHeight = 0.9;
+
+  // Number of rows and columns for hours layout (4x6 grid)
+  const rows = 4;
+  const cols = 6;
+
+  // Size for each hour rectangle
+  const hourWidth = cellWidth / cols * 0.85;
+  const hourHeight = cellHeight / rows * 0.85;
+
+  // Create 24 hour rectangles
+  for (let hour = 0; hour < 24; hour++) {
+    // Calculate row and column
+    const row = Math.floor(hour / cols);
+    const col = hour % cols;
+
+    // Calculate position
+    const x = (col - (cols - 1) / 2) * (hourWidth * 1.2);
+    const y = ((rows - 1) / 2 - row) * (hourHeight * 1.2);
+
+    // Create hour cell
+    const hourGeometry = new THREE.PlaneGeometry(hourWidth, hourHeight);
+    const hourMaterial = new THREE.MeshBasicMaterial({
+      color: 0x3a86ff,
+      transparent: true,
+      opacity: 0
+    });
+
+    const hourMesh = new THREE.Mesh(hourGeometry, hourMaterial);
+    hourMesh.position.set(x, y, 0.01);
+
+    // Create hour label
+    const textGeometry = new THREE.PlaneGeometry(hourWidth * 0.8, hourHeight * 0.8);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0
+    });
+
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 0, 0.01);
+
+    // Store hour number as user data
+    hourMesh.userData = {
+      hour,
+      hourMaterial,
+      labelMaterial: textMaterial
+    };
+
+    // Create text canvas for the hour number
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = 'white';
+      context.font = 'bold 40px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(hour.toString(), 32, 32);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      textMaterial.map = texture;
+      textMaterial.needsUpdate = true;
+    }
+
+    hourMesh.add(textMesh);
+    hoursGroup.add(hourMesh);
+  }
+
+  // Add hours group to the scene
+  refs.scene.current.add(hoursGroup);
+
+  // Store reference to hours group
+  dayCell.userData.hoursGroup = hoursGroup;
+
+  // Animate hours appearing sequentially
+  hoursGroup.children.forEach((hourCell, idx) => {
+    if (hourCell.userData.hourMaterial && hourCell.userData.labelMaterial) {
+      gsap.to(hourCell.userData.hourMaterial, {
+        opacity: 0.8,
+        duration: 0.5,
+        delay: idx * 0.03,
+        ease: 'power1.inOut'
+      });
+
+      gsap.to(hourCell.userData.labelMaterial, {
+        opacity: 1,
+        duration: 0.5,
+        delay: idx * 0.03 + 0.1,
+        ease: 'power1.inOut',
+        onComplete: idx === 23 ? onComplete : undefined
+      });
+    }
+  });
+};
+
+// Zoom in on hour 23 and show minutes
+export const focusOnHour23WithMinutes = (
+  refs: GridRefs,
+  onComplete: () => void
+): void => {
+  if (!refs.grid.current) return;
+
+  const decemberIndex = 11;
+  const dayGroup = refs.dayGroups.current[decemberIndex];
+  if (!dayGroup || !dayGroup.children[30]) return;
+
+  const dec31Cell = dayGroup.children[30];
+  const hoursGroup = dec31Cell.userData.hoursGroup;
+  if (!hoursGroup) return;
+
+  // Get the hour 23 cell (last one)
+  const hour23Cell = hoursGroup.children[23];
+  const hour23Position = hour23Cell.position.clone();
+  hour23Position.add(hoursGroup.position);
+
+  // Calculate zoom for hour 23
+  const additionalZoom = 2.2;
+  const currentZoom = refs.grid.current.scale.x;
+  const newZoom = currentZoom * additionalZoom;
+
+  // Center on hour 23
+  gsap.to(refs.grid.current.position, {
+    x: refs.grid.current.position.x - hour23Position.x * additionalZoom,
+    y: refs.grid.current.position.y - hour23Position.y * additionalZoom,
+    duration: 1.2,
+    ease: 'power2.inOut'
+  });
+
+  // Zoom in further
+  gsap.to(refs.grid.current.scale, {
+    x: newZoom,
+    y: newZoom,
+    z: newZoom,
+    duration: 1.2,
+    ease: 'power2.inOut',
+    onComplete: () => {
+      // Fade out the hour 23 cell
+      if (hour23Cell.userData.hourMaterial && hour23Cell.userData.labelMaterial) {
+        gsap.to(hour23Cell.userData.hourMaterial, {
+          opacity: 0,
+          duration: 0.5,
+          ease: 'power1.out'
+        });
+
+        gsap.to(hour23Cell.userData.labelMaterial, {
+          opacity: 0,
+          duration: 0.5,
+          ease: 'power1.out',
+          onComplete: () => {
+            // Create and show 60 rectangles representing minutes
+            createMinuteRectangles(refs, hour23Cell, onComplete);
+          }
+        });
+      }
+    }
+  });
+};
+
+// Create 60 rectangles representing minutes
+const createMinuteRectangles = (
+  refs: GridRefs,
+  hourCell: THREE.Object3D,
+  onComplete: () => void
+): void => {
+  if (!refs.scene.current) return;
+
+  // Create a group to hold all minute rectangles
+  const minutesGroup = new THREE.Group();
+  minutesGroup.position.copy(hourCell.position);
+
+  // Size of the original hour cell
+  const cellWidth = hourCell.children[0].geometry.parameters.width * 1.5;
+  const cellHeight = hourCell.children[0].geometry.parameters.height * 1.5;
+
+  // Number of rows and columns for minutes layout (6x10 grid)
+  const rows = 6;
+  const cols = 10;
+
+  // Size for each minute rectangle
+  const minuteWidth = cellWidth / cols * 0.85;
+  const minuteHeight = cellHeight / rows * 0.85;
+
+  // Create 60 minute rectangles
+  for (let minute = 0; minute < 60; minute++) {
+    // Calculate row and column
+    const row = Math.floor(minute / cols);
+    const col = minute % cols;
+
+    // Calculate position
+    const x = (col - (cols - 1) / 2) * (minuteWidth * 1.2);
+    const y = ((rows - 1) / 2 - row) * (minuteHeight * 1.2);
+
+    // Create minute cell
+    const minuteGeometry = new THREE.PlaneGeometry(minuteWidth, minuteHeight);
+    const minuteMaterial = new THREE.MeshBasicMaterial({
+      color: 0x4cc9f0,
+      transparent: true,
+      opacity: 0
+    });
+
+    const minuteMesh = new THREE.Mesh(minuteGeometry, minuteMaterial);
+    minuteMesh.position.set(x, y, 0.01);
+
+    // Create minute label
+    const textGeometry = new THREE.PlaneGeometry(minuteWidth * 0.7, minuteHeight * 0.7);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0
+    });
+
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 0, 0.01);
+
+    // Store minute number as user data
+    minuteMesh.userData = {
+      minute,
+      minuteMaterial,
+      labelMaterial: textMaterial
+    };
+
+    // Create text canvas for the minute number
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = 'white';
+      context.font = 'bold 30px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(minute.toString(), 32, 32);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      textMaterial.map = texture;
+      textMaterial.needsUpdate = true;
+    }
+
+    minuteMesh.add(textMesh);
+    minutesGroup.add(minuteMesh);
+  }
+
+  // Add minutes group to the scene
+  refs.scene.current.add(minutesGroup);
+
+  // Store reference to minutes group
+  hourCell.userData.minutesGroup = minutesGroup;
+
+  // Animate minutes appearing sequentially
+  minutesGroup.children.forEach((minuteCell, idx) => {
+    if (minuteCell.userData.minuteMaterial && minuteCell.userData.labelMaterial) {
+      gsap.to(minuteCell.userData.minuteMaterial, {
+        opacity: 0.8,
+        duration: 0.4,
+        delay: idx * 0.01,
+        ease: 'power1.inOut'
+      });
+
+      gsap.to(minuteCell.userData.labelMaterial, {
+        opacity: 1,
+        duration: 0.4,
+        delay: idx * 0.01 + 0.05,
+        ease: 'power1.inOut',
+        onComplete: idx === 59 ? onComplete : undefined
+      });
+    }
+  });
+};
+
+
+// Zoom in on minute 59 and show seconds
+export const focusOnMinute59WithSeconds = (
+  refs: GridRefs,
+  onComplete: () => void
+): void => {
+  if (!refs.grid.current) return;
+
+  const decemberIndex = 11;
+  const dayGroup = refs.dayGroups.current[decemberIndex];
+  if (!dayGroup || !dayGroup.children[30]) return;
+
+  const dec31Cell = dayGroup.children[30];
+  const hoursGroup = dec31Cell.userData.hoursGroup;
+  if (!hoursGroup) return;
+
+  const hour23Cell = hoursGroup.children[23];
+  const minutesGroup = hour23Cell.userData.minutesGroup;
+  if (!minutesGroup) return;
+
+  // Get the minute 59 cell (last one)
+  const minute59Cell = minutesGroup.children[59];
+  const minute59Position = minute59Cell.position.clone();
+  minute59Position.add(minutesGroup.position);
+  minute59Position.add(hoursGroup.position);
+
+  // Calculate zoom for minute 59
+  const additionalZoom = 2.2;
+  const currentZoom = refs.grid.current.scale.x;
+  const newZoom = currentZoom * additionalZoom;
+
+  // Center on minute 59
+  gsap.to(refs.grid.current.position, {
+    x: refs.grid.current.position.x - minute59Position.x * additionalZoom,
+    y: refs.grid.current.position.y - minute59Position.y * additionalZoom,
+    duration: 1.2,
+    ease: 'power2.inOut'
+  });
+
+  // Zoom in further
+  gsap.to(refs.grid.current.scale, {
+    x: newZoom,
+    y: newZoom,
+    z: newZoom,
+    duration: 1.2,
+    ease: 'power2.inOut',
+    onComplete: () => {
+      // Fade out the minute 59 cell
+      if (minute59Cell.userData.minuteMaterial && minute59Cell.userData.labelMaterial) {
+        gsap.to(minute59Cell.userData.minuteMaterial, {
+          opacity: 0,
+          duration: 0.5,
+          ease: 'power1.out'
+        });
+
+        gsap.to(minute59Cell.userData.labelMaterial, {
+          opacity: 0,
+          duration: 0.5,
+          ease: 'power1.out',
+          onComplete: () => {
+            // Create and show 60 rectangles representing seconds
+            createSecondRectangles(refs, minute59Cell, onComplete);
+          }
+        });
+      }
+    }
+  });
+};
+
+// Create 60 rectangles representing seconds
+const createSecondRectangles = (
+  refs: GridRefs,
+  minuteCell: THREE.Object3D,
+  onComplete: () => void
+): void => {
+  if (!refs.scene.current) return;
+
+  // Create a group to hold all second rectangles
+  const secondsGroup = new THREE.Group();
+  secondsGroup.position.copy(minuteCell.position);
+
+  // Size of the original minute cell
+  const cellWidth = minuteCell.children[0].geometry.parameters.width * 1.5;
+  const cellHeight = minuteCell.children[0].geometry.parameters.height * 1.5;
+
+  // Number of rows and columns for seconds layout (6x10 grid)
+  const rows = 6;
+  const cols = 10;
+
+  // Size for each second rectangle
+  const secondWidth = cellWidth / cols * 0.85;
+  const secondHeight = cellHeight / rows * 0.85;
+
+  // Create 60 second rectangles
+  for (let second = 0; second < 60; second++) {
+    // Calculate row and column
+    const row = Math.floor(second / cols);
+    const col = second % cols;
+
+    // Calculate position
+    const x = (col - (cols - 1) / 2) * (secondWidth * 1.2);
+    const y = ((rows - 1) / 2 - row) * (secondHeight * 1.2);
+
+    // Create second cell
+    const secondGeometry = new THREE.PlaneGeometry(secondWidth, secondHeight);
+    const secondMaterial = new THREE.MeshBasicMaterial({
+      color: 0xf72585,
+      transparent: true,
+      opacity: 0
+    });
+
+    const secondMesh = new THREE.Mesh(secondGeometry, secondMaterial);
+    secondMesh.position.set(x, y, 0.01);
+
+    // Create second label
+    const textGeometry = new THREE.PlaneGeometry(secondWidth * 0.7, secondHeight * 0.7);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0
+    });
+
+    const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+    textMesh.position.set(0, 0, 0.01);
+
+    // Store second number as user data
+    secondMesh.userData = {
+      second,
+      secondMaterial,
+      labelMaterial: textMaterial
+    };
+
+    // Create text canvas for the second number
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = 'white';
+      context.font = 'bold 30px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(second.toString(), 32, 32);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      textMaterial.map = texture;
+      textMaterial.needsUpdate = true;
+    }
+
+    secondMesh.add(textMesh);
+    secondsGroup.add(secondMesh);
+  }
+
+  // Add seconds group to the scene
+  refs.scene.current.add(secondsGroup);
+
+  // Store reference to seconds group
+  minuteCell.userData.secondsGroup = secondsGroup;
+
+  // Animate seconds appearing sequentially
+  secondsGroup.children.forEach((secondCell, idx) => {
+    if (secondCell.userData.secondMaterial && secondCell.userData.labelMaterial) {
+      gsap.to(secondCell.userData.secondMaterial, {
+        opacity: 0.8,
+        duration: 0.3,
+        delay: idx * 0.01,
+        ease: 'power1.inOut'
+      });
+
+      gsap.to(secondCell.userData.labelMaterial, {
+        opacity: 1,
+        duration: 0.3,
+        delay: idx * 0.01 + 0.05,
+        ease: 'power1.inOut',
+        onComplete: idx === 59 ? onComplete : undefined
+      });
+    }
+  });
+};

@@ -32,9 +32,19 @@ export type GridRefs = {
   currentMonthIndex: React.MutableRefObject<number>;
 };
 
-export type GridAction = 'initialZoom' | 'focusMonth' | 'reset';
+// types.ts addition
+export type GridAction =
+  | 'initialZoom'
+  | 'focusMonth'
+  | 'focusDecemberSecondHalf'
+  | 'focusDecember31WithHours'
+  | 'focusHour23WithMinutes'
+  | 'focusMinute59WithSeconds'
+  | 'reset';
 
-export type GridActionEvent = CustomEvent<{
+export interface GridActionEventDetail {
   action: GridAction;
   monthIndex?: number;
-}>;
+}
+
+export type GridActionEvent = CustomEvent<GridActionEventDetail>;

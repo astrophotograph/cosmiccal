@@ -1,3 +1,4 @@
+// BeginButton.tsx
 import { useState, useEffect, MouseEvent } from 'react';
 
 interface RipplePosition {
@@ -7,15 +8,15 @@ interface RipplePosition {
   id: number;
 }
 
-// Define the possible button states
-type ButtonState = 'begin' | 'next' | 'startOver';
+// Define the possible button states - adding the new states for our added steps
+type ButtonState = 'begin' | 'next' | 'december' | 'december31' | 'hour23' | 'minute59' | 'startOver';
 
 const BeginButton = () => {
   const [isPulsing, setPulsing] = useState(true);
   const [ripples, setRipples] = useState<RipplePosition[]>([]);
   const [rippleCount, setRippleCount] = useState(0);
   const [buttonState, setButtonState] = useState<ButtonState>('begin');
-  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(-1); // Changed initial value to -1
+  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(-1);
 
   // Toggle pulsing state for animation
   useEffect(() => {
@@ -44,10 +45,18 @@ const BeginButton = () => {
       if (stage === 'initialZoom') {
         setButtonState('next');
       } else if (stage === 'lastMonth') {
+        setButtonState('december'); // Change to 'december' instead of 'startOver'
+      } else if (stage === 'decemberSecondHalf') {
+        setButtonState('december31');
+      } else if (stage === 'december31') {
+        setButtonState('hour23');
+      } else if (stage === 'hour23') {
+        setButtonState('minute59');
+      } else if (stage === 'minute59') {
         setButtonState('startOver');
       } else if (stage === 'resetComplete') {
         setButtonState('begin');
-        setCurrentMonthIndex(-1); // Reset to -1 instead of 0
+        setCurrentMonthIndex(-1);
       }
     };
 
@@ -75,6 +84,26 @@ const BeginButton = () => {
           action: 'focusMonth',
           monthIndex: nextMonthIndex
         }
+      }));
+    } else if (buttonState === 'december') {
+      // Zoom in on the second half of December
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: { action: 'focusDecemberSecondHalf' }
+      }));
+    } else if (buttonState === 'december31') {
+      // Zoom in on December 31st and show hours
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: { action: 'focusDecember31WithHours' }
+      }));
+    } else if (buttonState === 'hour23') {
+      // Zoom in on hour 23 and show minutes
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: { action: 'focusHour23WithMinutes' }
+      }));
+    } else if (buttonState === 'minute59') {
+      // Zoom in on minute 59 and show seconds
+      window.dispatchEvent(new CustomEvent('gridAction', {
+        detail: { action: 'focusMinute59WithSeconds' }
       }));
     } else if (buttonState === 'startOver') {
       // Reset to original position
@@ -111,6 +140,10 @@ const BeginButton = () => {
   const buttonText = {
     'begin': 'Begin',
     'next': 'Next',
+    'december': 'Zoom December',
+    'december31': 'Zoom December 31',
+    'hour23': 'Show Hours',
+    'minute59': 'Show Seconds',
     'startOver': 'Start Over'
   }[buttonState];
 

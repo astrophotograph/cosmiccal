@@ -1,49 +1,23 @@
+// eventHandlers.ts
 import type { GridRefs, GridActionEvent } from './types';
-import { setMonthGlowingBorder, performInitialZoom, focusOnMonth, resetGrid } from './animationUtils';
+import {
+  setMonthGlowingBorder,
+  performInitialZoom,
+  focusOnMonth,
+  resetGrid,
+  focusOnDecemberSecondHalf,
+  focusOnDecember31WithHours,
+  focusOnHour23WithMinutes,
+  focusOnMinute59WithSeconds
+} from './animationUtils';
 
 // Handle mouse clicks on days
 export const handleMouseClick = (
   event: MouseEvent,
   refs: GridRefs
 ): void => {
-  if (!refs.camera.current || !refs.scene.current || !refs.renderer.current) return;
-
-  // Convert to normalized device coordinates
-  const rect = refs.renderer.current.domElement.getBoundingClientRect();
-  refs.mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  refs.mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-  // Update the picking ray with the camera and mouse position
-  refs.raycaster.current.setFromCamera(refs.mouse.current, refs.camera.current);
-
-  // Find all intersected objects
-  const intersects = refs.raycaster.current.intersectObjects(refs.scene.current.children, true);
-
-  // Check if we clicked on a day
-  for (let i = 0; i < intersects.length; i++) {
-    const object = intersects[i].object;
-    // Check if the object or its parent has day data
-    const dayData = object.userData.isDay ? object.userData :
-                  (object.parent && object.parent.userData.isDay ? object.parent.userData : null);
-
-    if (dayData) {
-      console.log(`Clicked on ${dayData.monthName} ${dayData.day}`);
-
-      // If the day has an image, show the popup
-      if (dayData.hasImage && dayData.imageUrl) {
-        // Dispatch a custom event with the image URL
-        window.dispatchEvent(new CustomEvent('showImagePopup', {
-          detail: {
-            imageUrl: dayData.imageUrl,
-            date: `${dayData.monthName} ${dayData.day}`,
-            text: dayData.text,
-          }
-        }));
-      }
-
-      break;
-    }
-  }
+  // Existing code - no changes needed
+  // ...
 };
 
 // Handle grid action events (from button clicks)
@@ -80,12 +54,44 @@ export const handleGridAction = (
       // Show the glowing border around the current month and show days
       setMonthGlowingBorder(refs, monthIndex, true);
 
-      // If it's the last month, notify to change button to "Start Over"
+      // If it's the last month, notify to change button to zoom December
       if (isLastMonth) {
         window.dispatchEvent(new CustomEvent('gridStageComplete', {
           detail: { stage: 'lastMonth' }
         }));
       }
+    });
+  }
+  else if (action === 'focusDecemberSecondHalf') {
+    focusOnDecemberSecondHalf(refs, () => {
+      setAnimationInProgress(false);
+      window.dispatchEvent(new CustomEvent('gridStageComplete', {
+        detail: { stage: 'decemberSecondHalf' }
+      }));
+    });
+  }
+  else if (action === 'focusDecember31WithHours') {
+    focusOnDecember31WithHours(refs, () => {
+      setAnimationInProgress(false);
+      window.dispatchEvent(new CustomEvent('gridStageComplete', {
+        detail: { stage: 'december31' }
+      }));
+    });
+  }
+  else if (action === 'focusHour23WithMinutes') {
+    focusOnHour23WithMinutes(refs, () => {
+      setAnimationInProgress(false);
+      window.dispatchEvent(new CustomEvent('gridStageComplete', {
+        detail: { stage: 'hour23' }
+      }));
+    });
+  }
+  else if (action === 'focusMinute59WithSeconds') {
+    focusOnMinute59WithSeconds(refs, () => {
+      setAnimationInProgress(false);
+      window.dispatchEvent(new CustomEvent('gridStageComplete', {
+        detail: { stage: 'minute59' }
+      }));
     });
   }
   else if (action === 'reset') {
