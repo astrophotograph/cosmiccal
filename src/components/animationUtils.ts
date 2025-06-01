@@ -2,6 +2,106 @@ import * as THREE from 'three';
 import { gsap } from 'gsap';
 import type { GridRefs } from './types';
 
+// Add this new function to create and animate the Earth globe
+export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): void => {
+  if (!refs.scene.current || !refs.monthCells.current[monthIndex]) return;
+
+  // Get the September month cell position
+  const sepCell = refs.monthCells.current[monthIndex];
+  const sepPosition = sepCell.position.clone();
+
+  // Create Earth globe
+  const textureLoader = new THREE.TextureLoader();
+
+  // Load Earth textures
+  const earthTexture = textureLoader.load('/textures/earth_daymap.jpg');
+  const bumpTexture = textureLoader.load('/textures/earth_bumpmap.jpg');
+  const cloudsTexture = textureLoader.load('/textures/earth_clouds.png');
+
+  // Create Earth sphere with realistic material
+  const earthGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+  const earthMaterial = new THREE.MeshPhongMaterial({
+    map: earthTexture,
+    bumpMap: bumpTexture,
+    bumpScale: 0.05,
+    specular: new THREE.Color(0x333333),
+    shininess: 5
+  });
+
+  const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+
+  // Create clouds layer
+  const cloudsGeometry = new THREE.SphereGeometry(0.42, 32, 32);
+  const cloudsMaterial = new THREE.MeshPhongMaterial({
+    map: cloudsTexture,
+    transparent: true,
+    opacity: 0.4
+  });
+
+  const cloudsMesh = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+
+  // Create a group to hold earth and clouds
+  const earthGroup = new THREE.Group();
+  earthGroup.add(earthMesh);
+  earthGroup.add(cloudsMesh);
+
+  // Position the globe above September
+  earthGroup.position.set(sepPosition.x, sepPosition.y, 0.5);
+
+  // Add lighting for the globe
+  const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+  sunLight.position.set(5, 3, 5);
+  earthGroup.add(sunLight);
+
+  const ambientLight = new THREE.AmbientLight(0x333333);
+  earthGroup.add(ambientLight);
+
+  // Add the globe to the scene
+  refs.scene.current.add(earthGroup);
+
+  // Set initial state - invisible
+  earthGroup.visible = true;
+  earthGroup.scale.set(0.001, 0.001, 0.001);
+  earthMaterial.opacity = 0;
+  cloudsMaterial.opacity = 0;
+
+  // Animation for earth rotation
+  const animateEarth = () => {
+    earthMesh.rotation.y += 0.002;
+    cloudsMesh.rotation.y += 0.0015;
+    requestAnimationFrame(animateEarth);
+  };
+
+  animateEarth();
+
+  // Fade in animation
+  gsap.to(earthGroup.scale, {
+    x: 1,
+    y: 1,
+    z: 1,
+    duration: 2,
+    ease: 'power2.out',
+    delay: 0.5
+  });
+
+  gsap.to(earthMaterial, {
+    opacity: 1,
+    duration: 2,
+    ease: 'power2.out',
+    delay: 0.8
+  });
+
+  gsap.to(cloudsMaterial, {
+    opacity: 0.4,
+    duration: 2.5,
+    ease: 'power2.out',
+    delay: 1
+  });
+
+  // Store reference to remove later if needed
+  sepCell.userData.earthGlobe = earthGroup;
+};
+
 // Update glowing border animation
 export const updateGlowingBorders = (monthCells: THREE.Group[]): void => {
   const time = Date.now() * 0.001;
@@ -135,7 +235,7 @@ export const setMonthGlowingBorder = (refs: GridRefs, monthIndex: number, visibl
   }
 };
 
-// Perform initial zoom animation
+// Update the performInitialZoom function
 export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current) return;
 
@@ -151,7 +251,16 @@ export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void
     x: tiltAngle,
     duration: 1.5,
     ease: 'power2.out',
-    onComplete
+    onComplete: () => {
+      // Find the September month index (month 8, zero-based)
+      const septemberIndex = 8;
+
+      // Create and animate the Earth globe over September
+      createAndAnimateEarthGlobe(refs, septemberIndex);
+
+      // Call the original completion handler
+      onComplete();
+    }
   });
 };
 
@@ -197,7 +306,7 @@ export const focusOnMonth = (
   });
 };
 
-// Reset the grid to initial state
+// Add to the existing resetGrid function to handle removing the globe
 export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current) return;
 
@@ -208,6 +317,24 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
 
   // Hide all glowing borders
   refs.monthCells.current.forEach(monthCell => {
+    // Remove earth globe if it exists
+    if (monthCell.userData.earthGlobe) {
+      const globe = monthCell.userData.earthGlobe;
+      gsap.to(globe.scale, {
+        x: 0.001,
+        y: 0.001,
+        z: 0.001,
+        duration: 1,
+        ease: 'power2.in',
+        onComplete: () => {
+          if (refs.scene.current) {
+            refs.scene.current.remove(globe);
+          }
+          delete monthCell.userData.earthGlobe;
+        }
+      });
+    }
+
     monthCell.children.forEach(child => {
       if (child.userData.isGlowBorder) {
         child.visible = false;
