@@ -14,43 +14,44 @@ export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): 
 
   // Load Earth textures
   const earthTexture = textureLoader.load('/textures/earth_daymap.jpg');
-  const bumpTexture = textureLoader.load('/textures/earth_bumpmap.jpg');
-  // const cloudsTexture = textureLoader.load('/textures/earth_clouds.png');
+  const cloudsTexture = textureLoader.load('/textures/earth_clouds.png');
+  const nightTexture = textureLoader.load('/textures/earth_night_4096.jpg');
 
   // Create Earth sphere with realistic material - increased size for better visibility
-  const earthGeometry = new THREE.SphereGeometry(0.6, 32, 32);
+  const earthGeometry = new THREE.SphereGeometry(0.5, 32, 32);
   const earthMaterial = new THREE.MeshPhongMaterial({
     map: earthTexture,
-    bumpMap: bumpTexture,
-    bumpScale: 0.05,
     specular: new THREE.Color(0x333333),
     shininess: 5,
     transparent: true,
-    opacity: 0
+    opacity: 0,
+    // emissiveMap: nightTexture,
+    // emissive: new THREE.Color(0xffffff),
+    // emissiveIntensity: 1.2,
   });
 
   const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
 
   // Create clouds layer
-  // const cloudsGeometry = new THREE.SphereGeometry(0.63, 32, 32);
-  // const cloudsMaterial = new THREE.MeshPhongMaterial({
-  //   map: cloudsTexture,
-  //   transparent: true,
-  //   opacity: 0
-  // });
-  //
-  // const cloudsMesh = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+  const cloudsGeometry = new THREE.SphereGeometry(0.53, 32, 32);
+  const cloudsMaterial = new THREE.MeshPhongMaterial({
+    map: cloudsTexture,
+    transparent: true,
+    opacity: 0
+  });
+
+  const cloudsMesh = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
 
   // Create a group to hold earth and clouds
   const earthGroup = new THREE.Group();
   earthGroup.add(earthMesh);
-  // earthGroup.add(cloudsMesh);
+  earthGroup.add(cloudsMesh);
 
   // Calculate the z position to ensure it's visible after the grid is tilted
   // September is in the 3rd row (row=2), so we need to position it accordingly
   // We need to account for the grid's tilted position
   const gridTiltAngle = refs.grid.current ? refs.grid.current.rotation.x : 0;
-  const zOffset = 1.5; // Increase this value to move the globe further away from the grid
+  const zOffset = 2.5; // Change to negative value to position in front of the grid
   const yOffset = 0.2; // Adjust vertical position to account for the tilt
 
   // Position the globe above September and in front of the grid
@@ -77,7 +78,7 @@ export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): 
   // Animation for earth rotation
   const animateEarth = () => {
     earthMesh.rotation.y += 0.002;
-    // cloudsMesh.rotation.y += 0.0015;
+    cloudsMesh.rotation.y += 0.0015;
     requestAnimationFrame(animateEarth);
   };
 
@@ -100,12 +101,12 @@ export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): 
     delay: 0.8
   });
 
-  // gsap.to(cloudsMaterial, {
-  //   opacity: 0.4,
-  //   duration: 2.5,
-  //   ease: "power2.out",
-  //   delay: 1
-  // });
+  gsap.to(cloudsMaterial, {
+    opacity: 0.4,
+    duration: 2.5,
+    ease: "power2.out",
+    delay: 1
+  });
 
   // Add a subtle floating animation for better visibility
   gsap.to(earthGroup.position, {
