@@ -22,22 +22,22 @@ const ImagePopup = ({imageUrl, date, text, isOpen, onClose}: PopupProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-auto bg-gray-800"
+        className="max-w-4xl max-h-[90vh] overflow-auto bg-gray-800"
         showCloseButton={true}
       >
         <DialogTitle className="text-xl text-white font-semibold">{date}</DialogTitle>
-        <div className="flex flex-col space-y-4">
-          <img
-            src={imageUrl}
-            alt={`Image for ${date}`}
-            className="max-w-full max-h-[50vh] object-contain mx-auto"
-          />
-
+        <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
           {text && (
-            <div className="prose prose-invert prose-sm max-w-none px-4 py-3 bg-gray-700 rounded-md">
+            <div className="prose prose-invert prose-sm max-w-none px-4 py-3 bg-gray-700 rounded-md md:flex-1">
               <ReactMarkdown>{text}</ReactMarkdown>
             </div>
           )}
+
+          <img
+            src={imageUrl}
+            alt={`Image for ${date}`}
+            className="max-w-full max-h-[50vh] object-contain mx-auto md:max-w-[45%]"
+          />
         </div>
       </DialogContent>
     </Dialog>

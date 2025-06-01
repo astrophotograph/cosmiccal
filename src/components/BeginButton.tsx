@@ -15,7 +15,7 @@ const BeginButton = () => {
   const [ripples, setRipples] = useState<RipplePosition[]>([]);
   const [rippleCount, setRippleCount] = useState(0);
   const [buttonState, setButtonState] = useState<ButtonState>('begin');
-  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(0);
+  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(-1); // Changed initial value to -1
 
   // Toggle pulsing state for animation
   useEffect(() => {
@@ -47,7 +47,7 @@ const BeginButton = () => {
         setButtonState('startOver');
       } else if (stage === 'resetComplete') {
         setButtonState('begin');
-        setCurrentMonthIndex(0);
+        setCurrentMonthIndex(-1); // Reset to -1 instead of 0
       }
     };
 
@@ -66,7 +66,7 @@ const BeginButton = () => {
         detail: { action: 'initialZoom' }
       }));
     } else if (buttonState === 'next') {
-      // Move to the next month
+      // Move to the next month - always focus on currentMonthIndex + 1
       const nextMonthIndex = currentMonthIndex + 1;
       setCurrentMonthIndex(nextMonthIndex);
 
