@@ -442,7 +442,7 @@ export const focusOnDecemberSecondHalf = (
   const dec25Position = dec25Cell.position.clone();
 
   // Apply a subtle zoom
-  const additionalZoom = 1.2;
+  const additionalZoom = 1.5;
   const currentZoom = refs.grid.current.scale.x;
   const newZoom = currentZoom * additionalZoom;
 
@@ -460,7 +460,7 @@ export const focusOnDecemberSecondHalf = (
 
   // Apply the zoom
   gsap.to(refs.grid.current.scale, {
-    x: newZoom,
+    // x: newZoom,
     y: newZoom,
     z: newZoom,
     duration: 1.2,
@@ -489,59 +489,55 @@ export const focusOnDecember31WithHours = (
 
   const dec31Cell = dayGroup.children[dec31Index];
 
-  // Debug information to understand positions
-  console.log('December 31 cell:', dec31Cell);
-  console.log('Day group position:', dayGroup.position);
-  console.log('Grid position:', refs.grid.current.position);
-  console.log('Grid scale:', refs.grid.current.scale);
-
-  // Reset any previous transformations to ensure we're working from a clean state
-  // for the December 31st cell's position
+  // Get the Dec 31 position
   const dec31Position = new THREE.Vector3();
   dec31Cell.getWorldPosition(dec31Position);
 
-  // Convert to a position relative to the grid's current position and scale
-  const gridWorldPosition = new THREE.Vector3();
-  refs.grid.current.getWorldPosition(gridWorldPosition);
+  // Get grid position
+  const gridPosition = new THREE.Vector3();
+  refs.grid.current.getWorldPosition(gridPosition);
 
-  // Calculate relative position
-  const relativePosition = dec31Position.clone().sub(gridWorldPosition);
+  // Use a more moderate zoom factor
+  const zoomFactor = 1.3; // Reduced from 4.0
+  const currentZoom = refs.grid.current.scale.x;
+  const newZoom = currentZoom * zoomFactor;
 
-  // Use a moderate zoom
-  const targetZoom = 2.5;
+  // Calculate grid position to center on Dec 31
+  const worldOffset = dec31Position.clone().sub(gridPosition);
 
-  // Calculate the new position to center December 31st
-  const newX = -relativePosition.x * 0.8; // Apply a factor to fine-tune
-  const newY = -relativePosition.y * 0.8; // Apply a factor to fine-tune
+  // Log for debugging
+  console.log('Dec31 cell world position:', dec31Position);
+  console.log('Grid world position:', gridPosition);
+  console.log('World offset:', worldOffset);
+  console.log('Current zoom:', currentZoom, 'New zoom:', newZoom);
 
-  console.log('Target position for Dec 31:', { x: newX, y: newY });
-
-  // Use more absolute positioning to ensure correct centering
+  // Calculate the target position that centers Dec 31
   gsap.to(refs.grid.current.position, {
-    x: newX,
-    y: newY,
+    // Move the grid in the opposite direction of the offset
+    x: refs.grid.current.position.x - worldOffset.x * (zoomFactor - 1),
+    y: refs.grid.current.position.y - worldOffset.y * (zoomFactor - 1),
     duration: 1.5,
     ease: 'power2.inOut'
   });
 
-  // Set an absolute zoom level
+  // Apply the zoom
   gsap.to(refs.grid.current.scale, {
-    x: targetZoom,
-    y: targetZoom,
-    z: targetZoom,
+    x: newZoom,
+    y: newZoom,
+    z: newZoom,
     duration: 1.5,
     ease: 'power2.inOut',
     onComplete: () => {
-      // Fade out the 31st day cell and its label
+      // Fade out the 31st day cell and its label, but not completely
       if (dec31Cell.userData.dayMaterial && dec31Cell.userData.labelMaterial) {
         gsap.to(dec31Cell.userData.dayMaterial, {
-          opacity: 0,
+          opacity: 0.2,  // Not completely invisible to provide context
           duration: 0.5,
           ease: 'power1.out'
         });
 
         gsap.to(dec31Cell.userData.labelMaterial, {
-          opacity: 0,
+          opacity: 0.2,  // Not completely invisible to provide context
           duration: 0.5,
           ease: 'power1.out',
           onComplete: () => {
@@ -554,7 +550,7 @@ export const focusOnDecember31WithHours = (
   });
 };
 
-// Create 24 rectangles representing hours
+// Create 24 hour rectangles within the December 31 cell
 const createHourRectangles = (
   refs: GridRefs,
   dayCell: THREE.Object3D,
@@ -563,31 +559,34 @@ const createHourRectangles = (
   if (!refs.scene.current) return;
 
   // Create a group to hold all hour rectangles
+  // Make the hours group a child of the day cell
   const hoursGroup = new THREE.Group();
+  dayCell.add(hoursGroup);
 
-  // Important: Maintain the position and rotation of the parent cell
-  // to ensure the hours appear in the correct 3D position
-  hoursGroup.position.copy(dayCell.position);
+  // Get the actual width and height of the day cell
+  let cellWidth = 1;
+  let cellHeight = 1;
 
-  // If the grid has a rotation, apply it to the hours group as well
-  if (refs.grid.current) {
-    hoursGroup.rotation.x = refs.grid.current.rotation.x;
+  // Try to get actual dimensions from the day cell
+  if (dayCell.children && dayCell.children[0] && dayCell.children[0].geometry) {
+    const geometry = dayCell.children[0].geometry as THREE.PlaneGeometry;
+    if (geometry.parameters) {
+      cellWidth = geometry.parameters.width;
+      cellHeight = geometry.parameters.height;
+    }
   }
-
-  // Size of the original day cell
-  const cellWidth = 0.9;
-  const cellHeight = 0.9;
 
   // Number of rows and columns for hours layout (4x6 grid)
   const rows = 4;
   const cols = 6;
 
-  // Size for each hour rectangle
-  const hourWidth = cellWidth / cols * 0.85;
-  const hourHeight = cellHeight / rows * 0.85;
+  // Size for each hour rectangle - make them larger to fill the day cell
+  // Use 0.9 to leave a small margin between cells
+  const hourWidth = cellWidth / cols * 0.99;
+  const hourHeight = cellHeight / rows * 0.99;
 
-  // Small z-offset to ensure hours appear slightly in front of the day cell
-  const zOffset = 0.02;
+  // Small z-offset to ensure hours appear in front of the day cell
+  const zOffset = 0.05;
 
   // Create 24 hour rectangles
   for (let hour = 0; hour < 24; hour++) {
@@ -595,9 +594,9 @@ const createHourRectangles = (
     const row = Math.floor(hour / cols);
     const col = hour % cols;
 
-    // Calculate position
-    const x = (col - (cols - 1) / 2) * (hourWidth * 1.2);
-    const y = ((rows - 1) / 2 - row) * (hourHeight * 1.2);
+    // Calculate position - evenly distributed across the day cell
+    const x = (col - (cols - 1) / 2) * (hourWidth * 1);
+    const y = ((rows - 1) / 2 - row) * (hourHeight * 1);
 
     // Create hour cell
     const hourGeometry = new THREE.PlaneGeometry(hourWidth, hourHeight);
@@ -605,16 +604,15 @@ const createHourRectangles = (
       color: 0x3a86ff,
       transparent: true,
       opacity: 0,
-      side: THREE.DoubleSide // Make visible from both sides
+      side: THREE.DoubleSide
     });
 
     const hourMesh = new THREE.Mesh(hourGeometry, hourMaterial);
-    hourMesh.position.set(x, y, zOffset); // Add small z-offset
+    hourMesh.position.set(x, y, zOffset);
 
-    // Add a subtle 3D effect - make each hour cell slightly tilted
-    // This helps emphasize they're in 3D space
-    hourMesh.rotation.x = THREE.MathUtils.degToRad(5);
-    hourMesh.rotation.y = THREE.MathUtils.degToRad((Math.random() - 0.5) * 5); // Slight random y rotation
+    // Add very subtle 3D effect
+    hourMesh.rotation.x = THREE.MathUtils.degToRad(1); // Minimal tilt
+    hourMesh.rotation.y = THREE.MathUtils.degToRad((Math.random() - 0.5) * 2); // Minimal random rotation
 
     // Create hour label
     const textGeometry = new THREE.PlaneGeometry(hourWidth * 0.8, hourHeight * 0.8);
@@ -626,7 +624,7 @@ const createHourRectangles = (
     });
 
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.set(0, 0, 0.01); // Position slightly in front of the hour cell
+    textMesh.position.set(0, 0, 0.005); // Slightly in front of hour rectangle
 
     // Store hour number as user data
     hourMesh.userData = {
@@ -642,7 +640,7 @@ const createHourRectangles = (
     const context = canvas.getContext('2d');
     if (context) {
       context.fillStyle = 'white';
-      context.font = 'bold 40px Arial';
+      context.font = 'bold 36px Arial';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       context.fillText(hour.toString(), 32, 32);
@@ -656,37 +654,34 @@ const createHourRectangles = (
     hoursGroup.add(hourMesh);
   }
 
-  // Add hours group to the scene
-  refs.scene.current.add(hoursGroup);
-
-  // Store reference to hours group
+  // Store reference to hours group in day cell's userData
   dayCell.userData.hoursGroup = hoursGroup;
 
   // Animate hours appearing sequentially
   hoursGroup.children.forEach((hourCell, idx) => {
     if (hourCell.userData.hourMaterial && hourCell.userData.labelMaterial) {
-      // Add a slight scale animation to emphasize 3D nature
-      hourCell.scale.set(0.5, 0.5, 0.5);
+      // Start with a smaller scale
+      hourCell.scale.set(0.4, 0.4, 0.4);
 
       gsap.to(hourCell.scale, {
         x: 1,
         y: 1,
         z: 1,
-        duration: 0.5,
+        duration: 0.4,
         delay: idx * 0.03,
-        ease: 'back.out(1.7)'
+        ease: 'back.out(1.5)'
       });
 
       gsap.to(hourCell.userData.hourMaterial, {
         opacity: 0.8,
-        duration: 0.5,
+        duration: 0.4,
         delay: idx * 0.03,
         ease: 'power1.inOut'
       });
 
       gsap.to(hourCell.userData.labelMaterial, {
         opacity: 1,
-        duration: 0.5,
+        duration: 0.4,
         delay: idx * 0.03 + 0.1,
         ease: 'power1.inOut',
         onComplete: idx === 23 ? onComplete : undefined
@@ -716,7 +711,7 @@ export const focusOnHour23WithMinutes = (
   hour23Position.add(hoursGroup.position);
 
   // Calculate zoom for hour 23
-  const additionalZoom = 2.2;
+  const additionalZoom = 0.2;
   const currentZoom = refs.grid.current.scale.x;
   const newZoom = currentZoom * additionalZoom;
 
@@ -801,7 +796,7 @@ const createMinuteRectangles = (
     });
 
     const minuteMesh = new THREE.Mesh(minuteGeometry, minuteMaterial);
-    minuteMesh.position.set(x, y, 0.01);
+    minuteMesh.position.set(x, y, 0.05);
 
     // Create minute label
     const textGeometry = new THREE.PlaneGeometry(minuteWidth * 0.7, minuteHeight * 0.7);
