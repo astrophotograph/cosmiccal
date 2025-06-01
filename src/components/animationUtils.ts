@@ -2,6 +2,12 @@ import * as THREE from 'three';
 import { gsap } from 'gsap';
 import type { GridRefs } from './types';
 
+const INITIAL_CAMERA_DISTANCE = 5;
+const MONTH_CAMERA_DISTANCE = 1.75;
+const DAY_DISTANCE = 1;
+const INITIAL_TILT = -30
+const CLOSEUP_TILT = -15
+
 export const createAndAnimateEarthGlobe = (refs: GridRefs, monthIndex: number): void => {
   if (!refs.scene.current || !refs.monthCells.current[monthIndex]) return;
 
@@ -266,16 +272,16 @@ export const setMonthGlowingBorder = (refs: GridRefs, monthIndex: number, visibl
 export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current || !refs.camera.current) return;
 
-  const tiltAngle = THREE.MathUtils.degToRad(-30);
+  const tiltAngle = THREE.MathUtils.degToRad(INITIAL_TILT);
 
   // Adjust camera position to better see the globe
-  if (refs.camera.current) {
-    gsap.to(refs.camera.current.position, {
-      z: 6, // Move the camera back slightly for a better view
-      duration: 1.5,
-      ease: 'power2.out'
-    });
-  }
+  // if (refs.camera.current) {
+  //   gsap.to(refs.camera.current.position, {
+  //     z: 6, // Move the camera back slightly for a better view
+  //     duration: 1.5,
+  //     ease: 'power2.out'
+  //   });
+  // }
 
   // Set the grid position
   gsap.to(refs.grid.current.position, {
@@ -305,7 +311,7 @@ export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void
   refs.grid.current.userData.initialTiltAngle = tiltAngle;
 };
 
-// Fixed focusOnMonth function with smoother transitions and closer view
+// Fixed focusOnMonth function with consistent camera positioning
 export const focusOnMonth = (
   refs: GridRefs,
   monthIndex: number,
@@ -318,29 +324,32 @@ export const focusOnMonth = (
   if (refs.monthCells.current[septemberIndex]?.userData.earthGlobe) {
     const globe = refs.monthCells.current[septemberIndex].userData.earthGlobe;
     globe.visible = false;
+    // todo : fade out!
+  }
+
+  // If we're changing from another month, hide its days first
+  if (refs.currentMonthIndex.current !== -1 && refs.currentMonthIndex.current !== monthIndex) {
+    hideMonthDays(refs, refs.currentMonthIndex.current);
   }
 
   const monthPosition = refs.monthPositions.current[monthIndex];
   const monthCell = refs.monthCells.current[monthIndex];
+  console.log('monthCell: ', monthCell);
 
-  // Get initial tilt angle from grid's userData
-  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
-
-  // Reduce tilt by half for closer view
-  const reducedTiltAngle = initialTiltAngle / 2;
+  const reducedTiltAngle = THREE.MathUtils.degToRad(CLOSEUP_TILT);
 
   // Create a new vector to track the target world position of the month
   const targetPosition = new THREE.Vector3();
   monthCell.getWorldPosition(targetPosition);
 
-  // Calculate a closer camera distance
-  const cameraDistance = 2.0; // Even closer for better view of the month
+  // Calculate a closer camera distance - same for all months
+  const cameraDistance = MONTH_CAMERA_DISTANCE;
 
   // Important: Set the grid's rotation immediately to the reduced tilt angle
   // to avoid the "weird tilt" at the beginning of movement
-  refs.grid.current.rotation.x = reducedTiltAngle;
-  refs.grid.current.rotation.y = 0;
-  refs.grid.current.rotation.z = 0;
+  // refs.grid.current.rotation.x = 0;
+  // refs.grid.current.rotation.y = 0;
+  // refs.grid.current.rotation.z = 0;
 
   // Calculate camera position with the reduced tilt
   const cameraTargetX = targetPosition.x;
@@ -350,46 +359,53 @@ export const focusOnMonth = (
   // Adjust Y position based on reduced tilt angle
   const yOffset = cameraDistance * Math.sin(reducedTiltAngle);
 
+  console.log('monthIndex: ', monthIndex);
+  console.log('targetPosition: ', targetPosition);
+  console.log('cameraTargetX: ', cameraTargetX);
+  console.log('cameraTargetY: ', cameraTargetY);
+  console.log('cameraTargetZ: ', cameraTargetZ);
+  console.log('yOffset: ', yOffset);
+
   // Animate camera to new position
   gsap.to(refs.camera.current.position, {
     x: cameraTargetX,
-    y: cameraTargetY + yOffset,
+    y: cameraTargetY, // + yOffset,
     z: cameraTargetZ,
     duration: 1.5,
     ease: 'power2.inOut'
   });
 
   // Reset grid position
-  gsap.to(refs.grid.current.position, {
-    x: 0,
-    y: 0,
-    z: 0,
+  // gsap.to(refs.grid.current.position, {
+  //   x: 0,
+  //   y: 0,
+  //   z: 0,
+  //   duration: 1.5,
+  //   ease: 'power2.inOut'
+  // });
+
+  gsap.to(refs.grid.current.rotation, {
+    x: reducedTiltAngle,
     duration: 1.5,
-    ease: 'power2.inOut'
+    ease: 'power2.out',
   });
 
+
   // Update the camera's lookAt target to focus on the month
-  const lookAtTarget = new THREE.Vector3(cameraTargetX, cameraTargetY, targetPosition.z);
+  // const lookAtTarget = new THREE.Vector3(cameraTargetX, cameraTargetY, targetPosition.z);
 
   // Use an onUpdate callback to continually update the lookAt during animation
   gsap.to({ progress: 0 }, {
     progress: 1,
     duration: 1.5,
     ease: 'power2.inOut',
-    onUpdate: function() {
-      if (refs.camera.current) {
-        refs.camera.current.lookAt(lookAtTarget);
-      }
-    },
     onComplete: () => {
       // Ensure final lookAt is applied
-      if (refs.camera.current) {
-        refs.camera.current.lookAt(lookAtTarget);
-      }
+      // if (refs.camera.current) {
+      //   refs.camera.current.lookAt(lookAtTarget);
+      // }
 
-      // Show days for the focused month
-      refs.currentMonthIndex.current = monthIndex;
-      showMonthDays(refs, monthIndex);
+      // refs.currentMonthIndex.current = monthIndex;
 
       // Call completion handler
       onComplete();
@@ -415,14 +431,11 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     });
   });
 
-  // Get the initial tilt angle
-  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
-
   // Reset camera position to initial state with a smoother transition
   gsap.to(refs.camera.current.position, {
     x: 0,
     y: 0,
-    z: 5, // Original camera distance
+    z: INITIAL_CAMERA_DISTANCE, // Original camera distance
     duration: 1.8, // Slightly longer for smoother transition
     ease: 'power2.inOut'
   });
@@ -447,7 +460,7 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
 
   // Reset grid rotation to initial tilt
   gsap.to(refs.grid.current.rotation, {
-    x: initialTiltAngle, // Reset to original tilt angle
+    x: 0,
     y: 0,
     z: 0,
     duration: 1.5,
@@ -548,7 +561,7 @@ export const focusOnDecember31WithHours = (
   dec31Cell.getWorldPosition(dec31Position);
 
   // Get initial tilt angle from grid's userData
-  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
+  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(INITIAL_TILT);
 
   // Reduce tilt by half for closer view
   const reducedTiltAngle = initialTiltAngle / 2;
@@ -645,16 +658,16 @@ const createHourRectangles = (
   const rows = 4;
   const cols = 6;
 
-  // Increase the scaling factor to better fill the day cell
-  // Using 1.0 means virtually no gap between cells
-  const hourWidth = cellWidth / cols * 0.99;
-  const hourHeight = cellHeight / rows * 0.99;
+  // Increase the scaling factor to completely fill the day cell
+  // Using 1.0 means no gap between cells
+  const hourWidth = cellWidth / cols;
+  const hourHeight = cellHeight / rows;
 
-  // Reduce spacing between cells for a more packed layout
-  const spacingFactor = 1.0; // Reduced from 1.2 to make cells closer together
+  // No spacing between cells for complete filling
+  const spacingFactor = 1.0;
 
   // Small z-offset to ensure hours appear in front of the day cell
-  const zOffset = 0.05;
+  const zOffset = 0.01;
 
   // Create 24 hour rectangles
   for (let hour = 0; hour < 24; hour++) {
@@ -663,7 +676,7 @@ const createHourRectangles = (
     const col = hour % cols;
 
     // Calculate position - evenly distributed across the day cell
-    // Use spacingFactor to control spacing between cells
+    // Position calculated to fill the entire cell with no gaps
     const x = (col - (cols - 1) / 2) * (hourWidth * spacingFactor);
     const y = ((rows - 1) / 2 - row) * (hourHeight * spacingFactor);
 
@@ -679,9 +692,11 @@ const createHourRectangles = (
     const hourMesh = new THREE.Mesh(hourGeometry, hourMaterial);
     hourMesh.position.set(x, y, zOffset);
 
-    // Remove the random rotation to keep a cleaner grid appearance
-    hourMesh.rotation.x = THREE.MathUtils.degToRad(1); // Minimal tilt
-    // hourMesh.rotation.y = 0; // No random rotation for cleaner appearance
+    // All hour rectangles should have the same height
+    // No rotation to ensure consistent appearance
+    hourMesh.rotation.x = 0;
+    hourMesh.rotation.y = 0;
+    hourMesh.rotation.z = 0;
 
     // Create hour label
     const textGeometry = new THREE.PlaneGeometry(hourWidth * 0.7, hourHeight * 0.7);
@@ -772,7 +787,7 @@ export const focusOnHour = (
   hourMesh.getWorldPosition(hourPosition);
 
   // Get initial tilt angle from grid's userData
-  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
+  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(CLOSEUP_TILT);
 
   // Reduce tilt by half for closer view
   const reducedTiltAngle = initialTiltAngle / 2;
@@ -851,7 +866,7 @@ export const focusOnHour = (
   });
 };
 
-// Zoom in on hour 23 and show minutes
+// Updated focusOnHour23WithMinutes to use focusOnHour
 export const focusOnHour23WithMinutes = (
   refs: GridRefs,
   onComplete: () => void
@@ -867,51 +882,36 @@ export const focusOnHour23WithMinutes = (
   if (!hoursGroup) return;
 
   // Get the hour 23 cell (last one)
+  const hour23Cell = hoursGroup.children[23] as THREE.Mesh;
+
+  // Use the focusOnHour function instead of reimplementing the logic
+  focusOnHour(refs, hour23Cell, onComplete);
+};
+
+// Updated focusOnMinute59WithSeconds to use focusOnMinute
+export const focusOnMinute59WithSeconds = (
+  refs: GridRefs,
+  onComplete: () => void
+): void => {
+  if (!refs.grid.current) return;
+
+  const decemberIndex = 11;
+  const dayGroup = refs.dayGroups.current[decemberIndex];
+  if (!dayGroup || !dayGroup.children[30]) return;
+
+  const dec31Cell = dayGroup.children[30];
+  const hoursGroup = dec31Cell.userData.hoursGroup;
+  if (!hoursGroup) return;
+
   const hour23Cell = hoursGroup.children[23];
-  const hour23Position = hour23Cell.position.clone();
-  hour23Position.add(hoursGroup.position);
+  const minutesGroup = hour23Cell.userData.minutesGroup;
+  if (!minutesGroup) return;
 
-  // Calculate zoom for hour 23
-  const additionalZoom = 0.2;
-  const currentZoom = refs.grid.current.scale.x;
-  const newZoom = currentZoom * additionalZoom;
+  // Get the minute 59 cell (last one)
+  const minute59Cell = minutesGroup.children[59] as THREE.Mesh;
 
-  // Center on hour 23
-  gsap.to(refs.grid.current.position, {
-    x: refs.grid.current.position.x - hour23Position.x * additionalZoom,
-    y: refs.grid.current.position.y - hour23Position.y * additionalZoom,
-    duration: 1.2,
-    ease: 'power2.inOut'
-  });
-
-  // Zoom in further
-  gsap.to(refs.grid.current.scale, {
-    x: newZoom,
-    y: newZoom,
-    z: newZoom,
-    duration: 1.2,
-    ease: 'power2.inOut',
-    onComplete: () => {
-      // Fade out the hour 23 cell
-      if (hour23Cell.userData.hourMaterial && hour23Cell.userData.labelMaterial) {
-        gsap.to(hour23Cell.userData.hourMaterial, {
-          opacity: 0,
-          duration: 0.5,
-          ease: 'power1.out'
-        });
-
-        gsap.to(hour23Cell.userData.labelMaterial, {
-          opacity: 0,
-          duration: 0.5,
-          ease: 'power1.out',
-          onComplete: () => {
-            // Create and show 60 rectangles representing minutes
-            createMinuteRectangles(refs, hour23Cell, onComplete);
-          }
-        });
-      }
-    }
-  });
+  // Use the focusOnMinute function instead of reimplementing the logic
+  focusOnMinute(refs, minute59Cell, onComplete);
 };
 
 // Create 60 rectangles representing minutes
@@ -1113,74 +1113,6 @@ export const focusOnMinute = (
 
       // Create and show 60 second rectangles
       createSecondRectangles(refs, minuteMesh, onComplete);
-    }
-  });
-};
-
-// Zoom in on minute 59 and show seconds
-export const focusOnMinute59WithSeconds = (
-  refs: GridRefs,
-  onComplete: () => void
-): void => {
-  if (!refs.grid.current) return;
-
-  const decemberIndex = 11;
-  const dayGroup = refs.dayGroups.current[decemberIndex];
-  if (!dayGroup || !dayGroup.children[30]) return;
-
-  const dec31Cell = dayGroup.children[30];
-  const hoursGroup = dec31Cell.userData.hoursGroup;
-  if (!hoursGroup) return;
-
-  const hour23Cell = hoursGroup.children[23];
-  const minutesGroup = hour23Cell.userData.minutesGroup;
-  if (!minutesGroup) return;
-
-  // Get the minute 59 cell (last one)
-  const minute59Cell = minutesGroup.children[59];
-  const minute59Position = minute59Cell.position.clone();
-  minute59Position.add(minutesGroup.position);
-  minute59Position.add(hoursGroup.position);
-
-  // Calculate zoom for minute 59
-  const additionalZoom = 2.2;
-  const currentZoom = refs.grid.current.scale.x;
-  const newZoom = currentZoom * additionalZoom;
-
-  // Center on minute 59
-  gsap.to(refs.grid.current.position, {
-    x: refs.grid.current.position.x - minute59Position.x * additionalZoom,
-    y: refs.grid.current.position.y - minute59Position.y * additionalZoom,
-    duration: 1.2,
-    ease: 'power2.inOut'
-  });
-
-  // Zoom in further
-  gsap.to(refs.grid.current.scale, {
-    x: newZoom,
-    y: newZoom,
-    z: newZoom,
-    duration: 1.2,
-    ease: 'power2.inOut',
-    onComplete: () => {
-      // Fade out the minute 59 cell
-      if (minute59Cell.userData.minuteMaterial && minute59Cell.userData.labelMaterial) {
-        gsap.to(minute59Cell.userData.minuteMaterial, {
-          opacity: 0,
-          duration: 0.5,
-          ease: 'power1.out'
-        });
-
-        gsap.to(minute59Cell.userData.labelMaterial, {
-          opacity: 0,
-          duration: 0.5,
-          ease: 'power1.out',
-          onComplete: () => {
-            // Create and show 60 rectangles representing seconds
-            createSecondRectangles(refs, minute59Cell, onComplete);
-          }
-        });
-      }
     }
   });
 };
