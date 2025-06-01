@@ -8,9 +8,9 @@ export const getDaysInMonth = (monthIndex: number): number => {
   return new Date(year, monthIndex + 1, 0).getDate();
 };
 
-// Create a month cell with a border
+// Add to the createMonthCell function - add a glowing border
 export const createMonthCell = (
-  index: number,
+  monthIndex: number,
   name: string,
   width: number,
   height: number,
@@ -32,7 +32,7 @@ export const createMonthCell = (
   background.position.set(0, 0, 0);
   group.add(background);
 
-  // Create glowing border
+  // Create regular border
   const borderGeometry = new THREE.EdgesGeometry(geometry);
   const borderMaterial = new THREE.LineBasicMaterial({
     color: 0x4a5568,
@@ -44,12 +44,27 @@ export const createMonthCell = (
   border.position.set(0, 0, 0.01);
   group.add(border);
 
+  // Create glowing border - initially hidden
+  const glowBorderGeometry = new THREE.EdgesGeometry(geometry);
+  const glowBorderMaterial = new THREE.LineBasicMaterial({
+    color: 0x38b2ff, // Bright blue color
+    transparent: true,
+    opacity: 0.9,
+    linewidth: 2
+  });
+
+  const glowBorder = new THREE.LineSegments(glowBorderGeometry, glowBorderMaterial);
+  glowBorder.position.set(0, 0, 0.02); // Slightly in front of regular border
+  glowBorder.visible = false; // Initially hidden
+  glowBorder.userData.isGlowBorder = true; // Mark this as a glow border for animation
+  group.add(glowBorder);
+
   // Store data for this month
   group.userData = {
-    monthIndex: index,
+    monthIndex,
     monthName: name,
     row,
-    glowBorder: border,
+    glowBorder,
     borderMaterial
   };
 
@@ -202,12 +217,18 @@ export const createDaysForMonth = (
   // Get current year
   const currentYear = new Date().getFullYear();
 
-  // Create a map of days with images for this month
-  const daysWithImages = new Map<number, string>();
+  // In the createDaysForMonth function, modify the daysWithImages map
+  // to include text data
+
+  // Create a map of days with images and text for this month
+  const daysWithImages = new Map<number, { imageUrl: string, text?: string }>();
   dateImages.forEach(item => {
     const date = item.date;
     if (date.getMonth() === monthIndex) {
-      daysWithImages.set(date.getDate(), item.imageUrl);
+      daysWithImages.set(date.getDate(), {
+        imageUrl: item.imageUrl,
+        text: item.text
+      });
     }
   });
 
@@ -269,8 +290,10 @@ export const createDaysForMonth = (
       dayMesh.add(dayLabel);
     }
 
-    // Store month and day data, including image URL if available
-    const imageUrl = daysWithImages.get(dayNum);
+    // Then later when setting userData, include the text field:
+
+    // Store data for this day, including image URL and text if available
+    const imageData = daysWithImages.get(dayNum);
     dayMesh.userData = {
       monthIndex,
       monthName,
@@ -278,8 +301,9 @@ export const createDaysForMonth = (
       isDay: true,
       dayMaterial,
       labelMaterial: dayMesh.children[0]?.material as THREE.MeshBasicMaterial,
-      hasImage,
-      imageUrl
+      hasImage: !!imageData,
+      imageUrl: imageData?.imageUrl,
+      text: imageData?.text // Pass the text data
     };
 
     dayGroup.add(dayMesh);

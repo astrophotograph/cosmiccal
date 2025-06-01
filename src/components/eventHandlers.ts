@@ -35,7 +35,8 @@ export const handleMouseClick = (
         window.dispatchEvent(new CustomEvent('showImagePopup', {
           detail: {
             imageUrl: dayData.imageUrl,
-            date: `${dayData.monthName} ${dayData.day}`
+            date: `${dayData.monthName} ${dayData.day}`,
+            text: dayData.text,
           }
         }));
       }

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 export type DateImageEntry = {
   date: Date;
   imageUrl: string;
+  text?: string; // Add text field for markdown content
 };
 
 export type GridRectangleProps = {
