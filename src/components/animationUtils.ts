@@ -262,7 +262,7 @@ export const setMonthGlowingBorder = (refs: GridRefs, monthIndex: number, visibl
   }
 };
 
-// Update the performInitialZoom function
+// Update the performInitialZoom function to properly set initial camera angle
 export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current || !refs.camera.current) return;
 
@@ -277,12 +277,14 @@ export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void
     });
   }
 
+  // Set the grid position
   gsap.to(refs.grid.current.position, {
     z: 2,
     duration: 1.5,
     ease: 'power2.out'
   });
 
+  // Tilt the grid
   gsap.to(refs.grid.current.rotation, {
     x: tiltAngle,
     duration: 1.5,
@@ -298,15 +300,18 @@ export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void
       onComplete();
     }
   });
+
+  // Store the initial tilt angle in the grid's userData for reference
+  refs.grid.current.userData.initialTiltAngle = tiltAngle;
 };
 
-// Perform focus on a specific month
+// Perform focus on a specific month with consistent camera perspective
 export const focusOnMonth = (
   refs: GridRefs,
   monthIndex: number,
   onComplete: () => void
 ): void => {
-  if (!refs.grid.current || monthIndex < 0 || monthIndex >= refs.monthPositions.current.length) return;
+  if (!refs.grid.current || !refs.camera.current || monthIndex < 0 || monthIndex >= refs.monthPositions.current.length) return;
 
   // Hide the Earth globe if it exists
   const septemberIndex = 8;
@@ -316,54 +321,83 @@ export const focusOnMonth = (
   }
 
   const monthPosition = refs.monthPositions.current[monthIndex];
-  const tiltAngle = refs.grid.current.rotation.x;
+  const monthCell = refs.monthCells.current[monthIndex];
 
-  // Calculate zoom level with perspective compensation
-  const baseZoom = 2.0;
-  const perspectiveCompensation = 0.45;
-  const zoomLevel = baseZoom + (monthPosition.row * perspectiveCompensation);
+  // Initial tilt angle from performInitialZoom
+  const tiltAngle = THREE.MathUtils.degToRad(-30);
 
-  // Z-offset to push the grid back for further rows
-  const zOffset = monthPosition.row * 0.8;
+  // Create a new vector to track the target world position of the month
+  const targetPosition = new THREE.Vector3();
+  monthCell.getWorldPosition(targetPosition);
 
-  // Y offset adjustment for perspective
-  const yOffsetAdjustment = monthPosition.row * 0.3 * Math.sin(tiltAngle);
+  // Calculate a consistent camera distance
+  const cameraDistance = 2;  // Base distance from camera to focused element
 
-  // Move grid to center the month
-  gsap.to(refs.grid.current.position, {
-    x: -monthPosition.x * zoomLevel,
-    y: -monthPosition.y * zoomLevel + yOffsetAdjustment,
-    z: 2 - zOffset,
-    duration: 1.2,
+  // Adjust camera position to maintain consistent angle and distance
+  // We'll move the camera instead of just scaling/moving the grid
+  const cameraTargetX = targetPosition.x;
+  const cameraTargetY = targetPosition.y;
+  const cameraTargetZ = targetPosition.z + cameraDistance * Math.cos(tiltAngle);
+
+  // Adjust Y position based on tilt angle to maintain proper perspective
+  const yOffset = cameraDistance * Math.sin(tiltAngle);
+
+  // Animate camera to new position while maintaining the tilt angle
+  gsap.to(refs.camera.current.position, {
+    x: cameraTargetX,
+    y: cameraTargetY + yOffset, // Adjust Y based on tilt angle
+    z: cameraTargetZ,
+    duration: 1.5,
     ease: 'power2.inOut'
   });
 
-  // Scale up to zoom in on the month
-  gsap.to(refs.grid.current.scale, {
-    x: zoomLevel,
-    y: zoomLevel,
-    z: zoomLevel,
-    duration: 1.2,
+  // Keep the camera looking at the month cell
+  gsap.to(refs.grid.current.position, {
+    x: 0, // Reset grid position
+    y: 0,
+    z: 0,
+    duration: 1.5,
+    ease: 'power2.inOut'
+  });
+
+  // Update the camera's lookAt target to focus on the month
+  const lookAtTarget = new THREE.Vector3(cameraTargetX, cameraTargetY, targetPosition.z);
+
+  // Use an onUpdate callback to continually update the lookAt during animation
+  let progress = 0;
+  gsap.to({ progress: 0 }, {
+    progress: 1,
+    duration: 1.5,
     ease: 'power2.inOut',
-    onComplete
+    onUpdate: function() {
+      if (refs.camera.current) {
+        refs.camera.current.lookAt(lookAtTarget);
+      }
+    },
+    onComplete: () => {
+      // Ensure final lookAt is applied
+      if (refs.camera.current) {
+        refs.camera.current.lookAt(lookAtTarget);
+      }
+
+      // Show days for the focused month
+      refs.currentMonthIndex.current = monthIndex;
+      showMonthDays(refs, monthIndex);
+
+      // Call completion handler
+      onComplete();
+    }
   });
 };
 
-// Update the resetGrid function to properly handle the globe visibility
+// Update the resetGrid function to reset camera position correctly
 export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
-  if (!refs.grid.current) return;
+  if (!refs.grid.current || !refs.camera.current) return;
 
   // If currently showing a month, hide its days and show the name
   if (refs.currentMonthIndex.current !== -1) {
     hideMonthDays(refs, refs.currentMonthIndex.current);
   }
-
-  // Find the Earth globe if it exists and make it visible again
-  // const septemberIndex = 8;
-  // if (refs.monthCells.current[septemberIndex]?.userData.earthGlobe) {
-  //   const globe = refs.monthCells.current[septemberIndex].userData.earthGlobe;
-  //   globe.visible = true;
-  // }
 
   // Hide all glowing borders
   refs.monthCells.current.forEach(monthCell => {
@@ -374,14 +408,14 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     });
   });
 
-  // Reset camera position
-  if (refs.camera.current) {
-    gsap.to(refs.camera.current.position, {
-      z: 5, // Return to original position
-      duration: 1.5,
-      ease: 'power2.inOut'
-    });
-  }
+  // Reset camera position to initial state
+  gsap.to(refs.camera.current.position, {
+    x: 0,
+    y: 0,
+    z: 5, // Original camera distance
+    duration: 1.5,
+    ease: 'power2.inOut'
+  });
 
   // Make sure all month labels are visible
   refs.monthLabels.current.forEach(label => {
@@ -389,7 +423,7 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     (label.material as THREE.MeshBasicMaterial).opacity = 1;
   });
 
-  // Reset position, rotation and scale
+  // Reset grid position, rotation and scale
   gsap.to(refs.grid.current.position, {
     x: 0,
     y: 0,
@@ -413,12 +447,16 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     duration: 1.5,
     ease: 'power2.inOut',
     onComplete: () => {
+      // Reset camera's rotation
+      if (refs.camera.current) {
+        refs.camera.current.lookAt(0, 0, 0);
+      }
+
       refs.currentMonthIndex.current = -1;
       onComplete();
     }
   });
 };
-
 // Zoom in on December second half, centered on December 25th
 export const focusOnDecemberSecondHalf = (
   refs: GridRefs,
@@ -469,12 +507,12 @@ export const focusOnDecemberSecondHalf = (
   });
 };
 
-// Perform a more substantial zoom on December 31st
+// Update focusOnDecember31WithHours to use consistent camera perspective
 export const focusOnDecember31WithHours = (
   refs: GridRefs,
   onComplete: () => void
 ): void => {
-  if (!refs.grid.current) return;
+  if (!refs.grid.current || !refs.camera.current) return;
 
   // First, ensure we're focused on December
   const decemberIndex = 11;
@@ -489,49 +527,60 @@ export const focusOnDecember31WithHours = (
 
   const dec31Cell = dayGroup.children[dec31Index];
 
-  // Get the Dec 31 position
+  // Get the Dec 31 position in world coordinates
   const dec31Position = new THREE.Vector3();
   dec31Cell.getWorldPosition(dec31Position);
 
-  // Get grid position
-  const gridPosition = new THREE.Vector3();
-  refs.grid.current.getWorldPosition(gridPosition);
+  // Increase the zoom factor for closer view
+  const zoomFactor = 1.8; // Increased from 1.3
 
-  // Increase the zoom factor to get a closer view
-  const zoomFactor = 1.7;
-  const currentZoom = refs.grid.current.scale.x;
-  const newZoom = currentZoom * zoomFactor;
+  // Calculate camera distance based on zoom factor
+  const cameraDistance = 5 / zoomFactor;
 
-  // Calculate grid position to center on Dec 31
-  const worldOffset = dec31Position.clone().sub(gridPosition);
+  // Get the initial tilt angle
+  const tiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
 
-  // Calculate the target position that centers Dec 31
-  gsap.to(refs.grid.current.position, {
-    // Move the grid in the opposite direction of the offset
-    x: refs.grid.current.position.x - worldOffset.x * (zoomFactor - 1),
-    y: refs.grid.current.position.y - worldOffset.y * (zoomFactor - 1),
+  // Calculate camera position to maintain the same viewing angle
+  const cameraTargetX = dec31Position.x;
+  const cameraTargetY = dec31Position.y;
+  const cameraTargetZ = dec31Position.z + cameraDistance * Math.cos(tiltAngle);
+
+  // Adjust Y position based on tilt angle
+  const yOffset = cameraDistance * Math.sin(tiltAngle);
+
+  // Move camera to the new position
+  gsap.to(refs.camera.current.position, {
+    x: cameraTargetX,
+    y: cameraTargetY + yOffset,
+    z: cameraTargetZ,
     duration: 1.5,
     ease: 'power2.inOut'
   });
 
-  // Apply the zoom
-  gsap.to(refs.grid.current.scale, {
-    x: newZoom,
-    y: newZoom,
-    z: newZoom,
+  // Keep the camera looking at the day cell
+  const lookAtTarget = new THREE.Vector3(cameraTargetX, cameraTargetY, dec31Position.z);
+
+  // Use an onUpdate callback to continually update the lookAt during animation
+  gsap.to({ progress: 0 }, {
+    progress: 1,
     duration: 1.5,
     ease: 'power2.inOut',
+    onUpdate: function() {
+      if (refs.camera.current) {
+        refs.camera.current.lookAt(lookAtTarget);
+      }
+    },
     onComplete: () => {
-      // Fade out the 31st day cell and its label, but make it more transparent
+      // Fade out the 31st day cell and its label, but not completely
       if (dec31Cell.userData.dayMaterial && dec31Cell.userData.labelMaterial) {
         gsap.to(dec31Cell.userData.dayMaterial, {
-          opacity: 0.1,  // More transparent to give focus to the hours
+          opacity: 0.1, // More transparent to give focus to the hours
           duration: 0.5,
           ease: 'power1.out'
         });
 
         gsap.to(dec31Cell.userData.labelMaterial, {
-          opacity: 0.1,  // More transparent to give focus to the hours
+          opacity: 0.1, // More transparent to give focus to the hours
           duration: 0.5,
           ease: 'power1.out',
           onComplete: () => {
