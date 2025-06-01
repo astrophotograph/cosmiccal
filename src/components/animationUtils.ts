@@ -262,7 +262,7 @@ export const setMonthGlowingBorder = (refs: GridRefs, monthIndex: number, visibl
   }
 };
 
-// Update the performInitialZoom function to properly set initial camera angle
+// Update the performInitialZoom function
 export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current || !refs.camera.current) return;
 
@@ -305,7 +305,7 @@ export const performInitialZoom = (refs: GridRefs, onComplete: () => void): void
   refs.grid.current.userData.initialTiltAngle = tiltAngle;
 };
 
-// Perform focus on a specific month with consistent camera perspective
+// Update the focusOnMonth function to reduce tilt and bring camera closer
 export const focusOnMonth = (
   refs: GridRefs,
   monthIndex: number,
@@ -323,37 +323,48 @@ export const focusOnMonth = (
   const monthPosition = refs.monthPositions.current[monthIndex];
   const monthCell = refs.monthCells.current[monthIndex];
 
-  // Initial tilt angle from performInitialZoom
-  const tiltAngle = THREE.MathUtils.degToRad(-30);
+  // Get initial tilt angle from grid's userData
+  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
+
+  // Reduce tilt by half for closer view
+  const reducedTiltAngle = initialTiltAngle / 2;
 
   // Create a new vector to track the target world position of the month
   const targetPosition = new THREE.Vector3();
   monthCell.getWorldPosition(targetPosition);
 
-  // Calculate a consistent camera distance
-  const cameraDistance = 2;  // Base distance from camera to focused element
+  // Calculate a closer camera distance
+  const cameraDistance = 2.5; // Reduced from 5 for closer view
 
   // Adjust camera position to maintain consistent angle and distance
-  // We'll move the camera instead of just scaling/moving the grid
   const cameraTargetX = targetPosition.x;
   const cameraTargetY = targetPosition.y;
-  const cameraTargetZ = targetPosition.z + cameraDistance * Math.cos(tiltAngle);
+  const cameraTargetZ = targetPosition.z + cameraDistance * Math.cos(reducedTiltAngle);
 
-  // Adjust Y position based on tilt angle to maintain proper perspective
-  const yOffset = cameraDistance * Math.sin(tiltAngle);
+  // Adjust Y position based on reduced tilt angle
+  const yOffset = cameraDistance * Math.sin(reducedTiltAngle);
 
-  // Animate camera to new position while maintaining the tilt angle
+  // Animate camera to new position with reduced tilt
   gsap.to(refs.camera.current.position, {
     x: cameraTargetX,
-    y: cameraTargetY + yOffset, // Adjust Y based on tilt angle
+    y: cameraTargetY + yOffset,
     z: cameraTargetZ,
     duration: 1.5,
     ease: 'power2.inOut'
   });
 
-  // Keep the camera looking at the month cell
+  // Reset grid position
   gsap.to(refs.grid.current.position, {
-    x: 0, // Reset grid position
+    x: 0,
+    y: 0,
+    z: 0,
+    duration: 1.5,
+    ease: 'power2.inOut'
+  });
+
+  // Apply the reduced tilt to the grid
+  gsap.to(refs.grid.current.rotation, {
+    x: reducedTiltAngle,
     y: 0,
     z: 0,
     duration: 1.5,
@@ -364,7 +375,6 @@ export const focusOnMonth = (
   const lookAtTarget = new THREE.Vector3(cameraTargetX, cameraTargetY, targetPosition.z);
 
   // Use an onUpdate callback to continually update the lookAt during animation
-  let progress = 0;
   gsap.to({ progress: 0 }, {
     progress: 1,
     duration: 1.5,
@@ -390,7 +400,7 @@ export const focusOnMonth = (
   });
 };
 
-// Update the resetGrid function to reset camera position correctly
+// Update the resetGrid function
 export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
   if (!refs.grid.current || !refs.camera.current) return;
 
@@ -408,6 +418,9 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     });
   });
 
+  // Get the initial tilt angle
+  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
+
   // Reset camera position to initial state
   gsap.to(refs.camera.current.position, {
     x: 0,
@@ -423,7 +436,7 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     (label.material as THREE.MeshBasicMaterial).opacity = 1;
   });
 
-  // Reset grid position, rotation and scale
+  // Reset grid position
   gsap.to(refs.grid.current.position, {
     x: 0,
     y: 0,
@@ -432,14 +445,16 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     ease: 'power2.inOut'
   });
 
+  // Reset grid rotation to initial tilt
   gsap.to(refs.grid.current.rotation, {
-    x: 0,
+    x: initialTiltAngle, // Reset to original tilt angle
     y: 0,
     z: 0,
     duration: 1.5,
     ease: 'power2.inOut'
   });
 
+  // Reset grid scale
   gsap.to(refs.grid.current.scale, {
     x: 1,
     y: 1,
@@ -457,6 +472,7 @@ export const resetGrid = (refs: GridRefs, onComplete: () => void): void => {
     }
   });
 };
+
 // Zoom in on December second half, centered on December 25th
 export const focusOnDecemberSecondHalf = (
   refs: GridRefs,
@@ -507,7 +523,7 @@ export const focusOnDecemberSecondHalf = (
   });
 };
 
-// Update focusOnDecember31WithHours to use consistent camera perspective
+// Update focusOnDecember31WithHours to use reduced tilt and closer camera
 export const focusOnDecember31WithHours = (
   refs: GridRefs,
   onComplete: () => void
@@ -531,28 +547,38 @@ export const focusOnDecember31WithHours = (
   const dec31Position = new THREE.Vector3();
   dec31Cell.getWorldPosition(dec31Position);
 
-  // Increase the zoom factor for closer view
-  const zoomFactor = 1.8; // Increased from 1.3
+  // Get initial tilt angle from grid's userData
+  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
 
-  // Calculate camera distance based on zoom factor
-  const cameraDistance = 5 / zoomFactor;
+  // Reduce tilt by half for closer view
+  const reducedTiltAngle = initialTiltAngle / 2;
 
-  // Get the initial tilt angle
-  const tiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
+  // Calculate a closer camera distance with increased zoom
+  const zoomFactor = 1.8;
+  const cameraDistance = 2.5 / zoomFactor; // Based on reduced base distance of 2.5
 
-  // Calculate camera position to maintain the same viewing angle
+  // Calculate camera position to maintain the same viewing angle with reduced tilt
   const cameraTargetX = dec31Position.x;
   const cameraTargetY = dec31Position.y;
-  const cameraTargetZ = dec31Position.z + cameraDistance * Math.cos(tiltAngle);
+  const cameraTargetZ = dec31Position.z + cameraDistance * Math.cos(reducedTiltAngle);
 
-  // Adjust Y position based on tilt angle
-  const yOffset = cameraDistance * Math.sin(tiltAngle);
+  // Adjust Y position based on reduced tilt angle
+  const yOffset = cameraDistance * Math.sin(reducedTiltAngle);
 
   // Move camera to the new position
   gsap.to(refs.camera.current.position, {
     x: cameraTargetX,
     y: cameraTargetY + yOffset,
     z: cameraTargetZ,
+    duration: 1.5,
+    ease: 'power2.inOut'
+  });
+
+  // Apply the reduced tilt to the grid
+  gsap.to(refs.grid.current.rotation, {
+    x: reducedTiltAngle,
+    y: 0,
+    z: 0,
     duration: 1.5,
     ease: 'power2.inOut'
   });
@@ -736,6 +762,84 @@ const createHourRectangles = (
     }
   });
 };
+
+// Update focusOnHour function to use reduced tilt and closer camera
+export const focusOnHour = (
+  refs: GridRefs,
+  hourMesh: THREE.Mesh,
+  onComplete: () => void
+): void => {
+  if (!refs.grid.current || !refs.camera.current) return;
+
+  // Get the hour position in world coordinates
+  const hourPosition = new THREE.Vector3();
+  hourMesh.getWorldPosition(hourPosition);
+
+  // Get initial tilt angle from grid's userData
+  const initialTiltAngle = refs.grid.current.userData.initialTiltAngle || THREE.MathUtils.degToRad(-30);
+
+  // Reduce tilt by half for closer view
+  const reducedTiltAngle = initialTiltAngle / 2;
+
+  // Calculate a closer camera distance
+  const zoomFactor = 2.2; // Increased zoom for hour view
+  const cameraDistance = 2.5 / zoomFactor;
+
+  // Calculate camera position with reduced tilt
+  const cameraTargetX = hourPosition.x;
+  const cameraTargetY = hourPosition.y;
+  const cameraTargetZ = hourPosition.z + cameraDistance * Math.cos(reducedTiltAngle);
+
+  // Adjust Y position based on reduced tilt angle
+  const yOffset = cameraDistance * Math.sin(reducedTiltAngle);
+
+  // Move camera to the new position
+  gsap.to(refs.camera.current.position, {
+    x: cameraTargetX,
+    y: cameraTargetY + yOffset,
+    z: cameraTargetZ,
+    duration: 1.5,
+    ease: 'power2.inOut'
+  });
+
+  // Apply the reduced tilt to the grid
+  gsap.to(refs.grid.current.rotation, {
+    x: reducedTiltAngle,
+    y: 0,
+    z: 0,
+    duration: 1.5,
+    ease: 'power2.inOut'
+  });
+
+  // Keep the camera looking at the hour cell
+  const lookAtTarget = new THREE.Vector3(cameraTargetX, cameraTargetY, hourPosition.z);
+
+  // Use an onUpdate callback to continually update the lookAt during animation
+  gsap.to({ progress: 0 }, {
+    progress: 1,
+    duration: 1.5,
+    ease: 'power2.inOut',
+    onUpdate: function() {
+      if (refs.camera.current) {
+        refs.camera.current.lookAt(lookAtTarget);
+      }
+    },
+    onComplete: () => {
+      // Highlight this hour
+      if (hourMesh.userData.hourMaterial) {
+        gsap.to(hourMesh.userData.hourMaterial, {
+          color: 0x56ccf2, // Bright blue
+          opacity: 0.8,
+          duration: 0.3
+        });
+      }
+
+      // Create and show 60 minute rectangles
+      createMinuteRectangles(refs, hourMesh, onComplete);
+    }
+  });
+};
+
 
 // Zoom in on hour 23 and show minutes
 export const focusOnHour23WithMinutes = (
