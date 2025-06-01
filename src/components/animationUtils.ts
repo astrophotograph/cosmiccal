@@ -428,40 +428,45 @@ export const focusOnDecemberSecondHalf = (
 
   // December index (11 in zero-based indexing)
   const decemberIndex = 11;
+  const dayGroup = refs.dayGroups.current[decemberIndex];
+  if (!dayGroup) return;
 
-  // First focus on December month
-  focusOnMonth(refs, decemberIndex, () => {
-    // Once December is focused, zoom in on the second half
-    const dayGroup = refs.dayGroups.current[decemberIndex];
-    if (!dayGroup) return;
+  // We want to focus on roughly days 16-31, so calculate the center point
+  // Day indices: 0-based, so 15 = 16th, 30 = 31st
+  const startIndex = 15; // December 16th
+  const endIndex = 30;   // December 31st
 
-    // Find the day cell for December 16th (index 15)
-    const startDayIndex = 15;
-    if (dayGroup.children.length <= startDayIndex) return;
+  // Ensure we have enough days
+  if (dayGroup.children.length <= endIndex) return;
 
-    const day16Position = dayGroup.children[startDayIndex].position.clone();
+  // Calculate the middle day index for the second half
+  const middleIndex = Math.floor((startIndex + endIndex) / 2); // Around December 23-24
+  const middleDayPosition = dayGroup.children[middleIndex].position.clone();
 
-    // Calculate additional zoom level
-    const additionalZoom = 1.8;
-    const currentZoom = refs.grid.current.scale.x;
-    const newZoom = currentZoom * additionalZoom;
+  // Use a more subtle zoom
+  const additionalZoom = 1.3; // Reduced from 1.6
+  const currentZoom = refs.grid.current.scale.x;
+  const newZoom = currentZoom * additionalZoom;
 
-    // Calculate the position to center on December 16-31
-    gsap.to(refs.grid.current.position, {
-      x: refs.grid.current.position.x - day16Position.x * additionalZoom * 0.5,
-      duration: 1.2,
-      ease: 'power2.inOut'
-    });
+  // Adjust the vertical position to show the second half
+  // Use a multiplier to control how much we shift down
+  const yAdjustment = 0.4; // Controls how much we move down
 
-    // Zoom in further
-    gsap.to(refs.grid.current.scale, {
-      x: newZoom,
-      y: newZoom,
-      z: newZoom,
-      duration: 1.2,
-      ease: 'power2.inOut',
-      onComplete
-    });
+  gsap.to(refs.grid.current.position, {
+    // Only adjust Y position to move down to the second half
+    y: refs.grid.current.position.y - middleDayPosition.y * additionalZoom * yAdjustment,
+    duration: 1.2,
+    ease: 'power2.inOut'
+  });
+
+  // Apply the zoom
+  gsap.to(refs.grid.current.scale, {
+    x: newZoom,
+    y: newZoom,
+    z: newZoom,
+    duration: 1.2,
+    ease: 'power2.inOut',
+    onComplete
   });
 };
 
@@ -483,20 +488,27 @@ export const focusOnDecember31WithHours = (
   const dec31Cell = dayGroup.children[dec31Index];
   const dec31Position = dec31Cell.position.clone();
 
-  // Calculate zoom for December 31st
-  const additionalZoom = 2.5;
+  // Calculate zoom for December 31st - using a more moderate zoom
+  const additionalZoom = 2.0; // Reduced from 2.5
   const currentZoom = refs.grid.current.scale.x;
   const newZoom = currentZoom * additionalZoom;
 
-  // Center on December 31st
+  // Log positions for debugging
+  console.log('December 31 position:', dec31Position);
+  console.log('Current grid position:', refs.grid.current.position);
+
+  // First, determine the absolute position we want to center on
+  // We need to account for the current grid position and scale
   gsap.to(refs.grid.current.position, {
-    x: refs.grid.current.position.x - dec31Position.x * additionalZoom,
-    y: refs.grid.current.position.y - dec31Position.y * additionalZoom,
+    // For x position, we only need a small adjustment since we're already focused on December
+    x: refs.grid.current.position.x - dec31Position.x * additionalZoom * 0.8,
+    // For y position, we need to center on December 31st specifically
+    y: refs.grid.current.position.y - dec31Position.y * additionalZoom * 0.8,
     duration: 1.2,
     ease: 'power2.inOut'
   });
 
-  // Zoom in further
+  // Apply the zoom
   gsap.to(refs.grid.current.scale, {
     x: newZoom,
     y: newZoom,
