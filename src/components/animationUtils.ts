@@ -477,6 +477,7 @@ export const focusOnDecemberSecondHalf = (
     onComplete
   });
 };
+
 // Zoom in on December 31st and show hours
 export const focusOnDecember31WithHours = (
   refs: GridRefs,
@@ -494,45 +495,33 @@ export const focusOnDecember31WithHours = (
 
   const dec31Cell = dayGroup.children[dec31Index];
 
-  // Get the world position of the December 31 cell
-  // This requires calculating based on all the transforms currently applied
-  const dec31Position = new THREE.Vector3();
-  dec31Cell.getWorldPosition(dec31Position);
+  // Get position of Dec 31
+  const dec31Position = dec31Cell.position.clone();
 
-  // Convert world position to local position relative to the grid
-  // since that's the space we're manipulating
-  const gridWorldPosition = new THREE.Vector3();
-  refs.grid.current.getWorldPosition(gridWorldPosition);
-
-  // Calculate local position
-  const localPosition = dec31Position.clone().sub(gridWorldPosition);
-
-  // Scale it by the current grid scale
-  localPosition.divide(refs.grid.current.scale);
-
-  // Use a fixed zoom amount for more predictable results
-  const newZoom = 7.0; // This is an absolute value, not relative to current zoom
+  // Use a more moderate zoom that shows the entire cell
+  const additionalZoom = 1.8; // Much more moderate
+  const currentZoom = refs.grid.current.scale.x;
+  const newZoom = currentZoom * additionalZoom;
 
   // Log for debugging
-  console.log('Dec 31 local position:', localPosition);
+  console.log('December 31 position:', dec31Position);
   console.log('Current grid position:', refs.grid.current.position);
-  console.log('Current grid scale:', refs.grid.current.scale);
 
-  // Move the grid to center on Dec 31
+  // Center on December 31st with more controlled positioning
   gsap.to(refs.grid.current.position, {
-    // Center the grid on Dec 31
-    x: -localPosition.x * newZoom,
-    y: -localPosition.y * newZoom,
-    duration: 1.5,
+    // Adjust x and y to center on Dec 31
+    x: refs.grid.current.position.x - dec31Position.x * additionalZoom * 0.9,
+    y: refs.grid.current.position.y - dec31Position.y * additionalZoom * 0.9,
+    duration: 1.2,
     ease: 'power2.inOut'
   });
 
-  // Set a fixed, absolute zoom level
+  // Apply the zoom
   gsap.to(refs.grid.current.scale, {
     x: newZoom,
     y: newZoom,
     z: newZoom,
-    duration: 1.5,
+    duration: 1.2,
     ease: 'power2.inOut',
     onComplete: () => {
       // Fade out the 31st day cell and its label
@@ -567,7 +556,15 @@ const createHourRectangles = (
 
   // Create a group to hold all hour rectangles
   const hoursGroup = new THREE.Group();
+
+  // Important: Maintain the position and rotation of the parent cell
+  // to ensure the hours appear in the correct 3D position
   hoursGroup.position.copy(dayCell.position);
+
+  // If the grid has a rotation, apply it to the hours group as well
+  if (refs.grid.current) {
+    hoursGroup.rotation.x = refs.grid.current.rotation.x;
+  }
 
   // Size of the original day cell
   const cellWidth = 0.9;
@@ -580,6 +577,9 @@ const createHourRectangles = (
   // Size for each hour rectangle
   const hourWidth = cellWidth / cols * 0.85;
   const hourHeight = cellHeight / rows * 0.85;
+
+  // Small z-offset to ensure hours appear slightly in front of the day cell
+  const zOffset = 0.02;
 
   // Create 24 hour rectangles
   for (let hour = 0; hour < 24; hour++) {
@@ -596,22 +596,29 @@ const createHourRectangles = (
     const hourMaterial = new THREE.MeshBasicMaterial({
       color: 0x3a86ff,
       transparent: true,
-      opacity: 0
+      opacity: 0,
+      side: THREE.DoubleSide // Make visible from both sides
     });
 
     const hourMesh = new THREE.Mesh(hourGeometry, hourMaterial);
-    hourMesh.position.set(x, y, 0.01);
+    hourMesh.position.set(x, y, zOffset); // Add small z-offset
+
+    // Add a subtle 3D effect - make each hour cell slightly tilted
+    // This helps emphasize they're in 3D space
+    hourMesh.rotation.x = THREE.MathUtils.degToRad(5);
+    hourMesh.rotation.y = THREE.MathUtils.degToRad((Math.random() - 0.5) * 5); // Slight random y rotation
 
     // Create hour label
     const textGeometry = new THREE.PlaneGeometry(hourWidth * 0.8, hourHeight * 0.8);
     const textMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0
+      opacity: 0,
+      side: THREE.DoubleSide
     });
 
     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-    textMesh.position.set(0, 0, 0.01);
+    textMesh.position.set(0, 0, 0.01); // Position slightly in front of the hour cell
 
     // Store hour number as user data
     hourMesh.userData = {
@@ -650,6 +657,18 @@ const createHourRectangles = (
   // Animate hours appearing sequentially
   hoursGroup.children.forEach((hourCell, idx) => {
     if (hourCell.userData.hourMaterial && hourCell.userData.labelMaterial) {
+      // Add a slight scale animation to emphasize 3D nature
+      hourCell.scale.set(0.5, 0.5, 0.5);
+
+      gsap.to(hourCell.scale, {
+        x: 1,
+        y: 1,
+        z: 1,
+        duration: 0.5,
+        delay: idx * 0.03,
+        ease: 'back.out(1.7)'
+      });
+
       gsap.to(hourCell.userData.hourMaterial, {
         opacity: 0.8,
         duration: 0.5,
