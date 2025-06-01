@@ -469,7 +469,7 @@ export const focusOnDecemberSecondHalf = (
   });
 };
 
-// Zoom in on December 31st and show hours
+// Perform a more substantial zoom on December 31st
 export const focusOnDecember31WithHours = (
   refs: GridRefs,
   onComplete: () => void
@@ -497,19 +497,13 @@ export const focusOnDecember31WithHours = (
   const gridPosition = new THREE.Vector3();
   refs.grid.current.getWorldPosition(gridPosition);
 
-  // Use a more moderate zoom factor
-  const zoomFactor = 1.3; // Reduced from 4.0
+  // Increase the zoom factor to get a closer view
+  const zoomFactor = 1.7;
   const currentZoom = refs.grid.current.scale.x;
   const newZoom = currentZoom * zoomFactor;
 
   // Calculate grid position to center on Dec 31
   const worldOffset = dec31Position.clone().sub(gridPosition);
-
-  // Log for debugging
-  console.log('Dec31 cell world position:', dec31Position);
-  console.log('Grid world position:', gridPosition);
-  console.log('World offset:', worldOffset);
-  console.log('Current zoom:', currentZoom, 'New zoom:', newZoom);
 
   // Calculate the target position that centers Dec 31
   gsap.to(refs.grid.current.position, {
@@ -528,16 +522,16 @@ export const focusOnDecember31WithHours = (
     duration: 1.5,
     ease: 'power2.inOut',
     onComplete: () => {
-      // Fade out the 31st day cell and its label, but not completely
+      // Fade out the 31st day cell and its label, but make it more transparent
       if (dec31Cell.userData.dayMaterial && dec31Cell.userData.labelMaterial) {
         gsap.to(dec31Cell.userData.dayMaterial, {
-          opacity: 0.2,  // Not completely invisible to provide context
+          opacity: 0.1,  // More transparent to give focus to the hours
           duration: 0.5,
           ease: 'power1.out'
         });
 
         gsap.to(dec31Cell.userData.labelMaterial, {
-          opacity: 0.2,  // Not completely invisible to provide context
+          opacity: 0.1,  // More transparent to give focus to the hours
           duration: 0.5,
           ease: 'power1.out',
           onComplete: () => {
@@ -550,7 +544,7 @@ export const focusOnDecember31WithHours = (
   });
 };
 
-// Create 24 hour rectangles within the December 31 cell
+// Modified createHourRectangles function to better fill the day cell
 const createHourRectangles = (
   refs: GridRefs,
   dayCell: THREE.Object3D,
@@ -580,10 +574,13 @@ const createHourRectangles = (
   const rows = 4;
   const cols = 6;
 
-  // Size for each hour rectangle - make them larger to fill the day cell
-  // Use 0.9 to leave a small margin between cells
+  // Increase the scaling factor to better fill the day cell
+  // Using 1.0 means virtually no gap between cells
   const hourWidth = cellWidth / cols * 0.99;
   const hourHeight = cellHeight / rows * 0.99;
+
+  // Reduce spacing between cells for a more packed layout
+  const spacingFactor = 1.0; // Reduced from 1.2 to make cells closer together
 
   // Small z-offset to ensure hours appear in front of the day cell
   const zOffset = 0.05;
@@ -595,8 +592,9 @@ const createHourRectangles = (
     const col = hour % cols;
 
     // Calculate position - evenly distributed across the day cell
-    const x = (col - (cols - 1) / 2) * (hourWidth * 1);
-    const y = ((rows - 1) / 2 - row) * (hourHeight * 1);
+    // Use spacingFactor to control spacing between cells
+    const x = (col - (cols - 1) / 2) * (hourWidth * spacingFactor);
+    const y = ((rows - 1) / 2 - row) * (hourHeight * spacingFactor);
 
     // Create hour cell
     const hourGeometry = new THREE.PlaneGeometry(hourWidth, hourHeight);
@@ -610,12 +608,12 @@ const createHourRectangles = (
     const hourMesh = new THREE.Mesh(hourGeometry, hourMaterial);
     hourMesh.position.set(x, y, zOffset);
 
-    // Add very subtle 3D effect
+    // Remove the random rotation to keep a cleaner grid appearance
     hourMesh.rotation.x = THREE.MathUtils.degToRad(1); // Minimal tilt
-    hourMesh.rotation.y = THREE.MathUtils.degToRad((Math.random() - 0.5) * 2); // Minimal random rotation
+    // hourMesh.rotation.y = 0; // No random rotation for cleaner appearance
 
     // Create hour label
-    const textGeometry = new THREE.PlaneGeometry(hourWidth * 0.8, hourHeight * 0.8);
+    const textGeometry = new THREE.PlaneGeometry(hourWidth * 0.7, hourHeight * 0.7);
     const textMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
