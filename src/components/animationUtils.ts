@@ -4,7 +4,7 @@ import type { GridRefs } from './types';
 
 const INITIAL_CAMERA_DISTANCE = 5;
 const MONTH_CAMERA_DISTANCE = 3.3;
-const DAY_CAMERA_DISTANCE = 3.0;
+const DAY_CAMERA_DISTANCE = 2.7;
 const HOUR_CAMERA_DISTANCE = 2.4
 const MINUTE_CAMERA_DISTANCE = 2.4
 const INITIAL_TILT = -30
@@ -540,7 +540,7 @@ export const focusOnDecember31WithHours = (
   });
 };
 
-// Modified createHourRectangles function to better fill the day cell
+// Modified createHourRectangles function with separators
 const createHourRectangles = (
   refs: GridRefs,
   dayCell: THREE.Object3D,
@@ -575,6 +575,11 @@ const createHourRectangles = (
   const hourWidth = cellWidth / cols;
   const hourHeight = cellHeight / rows;
 
+  // Small gap for separators
+  const separatorWidth = 0.005;
+  const separatorHeight = hourHeight * 0.9;
+  const separatorColor = 0x888888;
+
   // Small z-offset to ensure hours appear in front of the day cell
   const zOffset = 0.02;
 
@@ -590,7 +595,7 @@ const createHourRectangles = (
     const y = ((rows - 1) / 2 - row) * hourHeight;
 
     // Create hour cell
-    const hourGeometry = new THREE.PlaneGeometry(hourWidth, hourHeight);
+    const hourGeometry = new THREE.PlaneGeometry(hourWidth * 0.95, hourHeight * 0.95);
     const hourMaterial = new THREE.MeshBasicMaterial({
       color: 0x3a86ff,
       transparent: true,
@@ -645,18 +650,63 @@ const createHourRectangles = (
 
     hourMesh.add(textMesh);
     hoursGroup.add(hourMesh);
+
+    // Add separators (except for the rightmost column)
+    if (col < cols - 1) {
+      const rightSeparatorGeometry = new THREE.PlaneGeometry(separatorWidth, separatorHeight);
+      const rightSeparatorMaterial = new THREE.MeshBasicMaterial({
+        color: separatorColor,
+        transparent: true,
+        opacity: 0
+      });
+
+      const rightSeparator = new THREE.Mesh(rightSeparatorGeometry, rightSeparatorMaterial);
+      rightSeparator.position.set(x + hourWidth/2, y, zOffset + 0.001);
+      hoursGroup.add(rightSeparator);
+
+      // Animate separator appearance
+      gsap.to(rightSeparatorMaterial, {
+        opacity: 0.6,
+        duration: 0.4,
+        delay: 0.5 + hour * 0.03,
+        ease: 'power1.inOut'
+      });
+    }
+
+    // Add bottom separators (except for the bottom row)
+    if (row < rows - 1) {
+      const bottomSeparatorGeometry = new THREE.PlaneGeometry(hourWidth * 0.9, separatorWidth);
+      const bottomSeparatorMaterial = new THREE.MeshBasicMaterial({
+        color: separatorColor,
+        transparent: true,
+        opacity: 0
+      });
+
+      const bottomSeparator = new THREE.Mesh(bottomSeparatorGeometry, bottomSeparatorMaterial);
+      bottomSeparator.position.set(x, y - hourHeight/2, zOffset + 0.001);
+      hoursGroup.add(bottomSeparator);
+
+      // Animate separator appearance
+      gsap.to(bottomSeparatorMaterial, {
+        opacity: 0.6,
+        duration: 0.4,
+        delay: 0.5 + hour * 0.03,
+        ease: 'power1.inOut'
+      });
+    }
   }
 
   // Store reference to hours group in day cell's userData
   dayCell.userData.hoursGroup = hoursGroup;
 
   // Animate hours appearing sequentially
-  hoursGroup.children.forEach((hourCell, idx) => {
-    if (hourCell.userData.hourMaterial && hourCell.userData.labelMaterial) {
+  hoursGroup.children.forEach((child, idx) => {
+    // Only animate the hour cells, not the separators
+    if (child.userData && child.userData.hourMaterial && child.userData.labelMaterial) {
       // Start with a smaller scale
-      hourCell.scale.set(0.4, 0.4, 0.4);
+      child.scale.set(0.4, 0.4, 0.4);
 
-      gsap.to(hourCell.scale, {
+      gsap.to(child.scale, {
         x: 1,
         y: 1,
         z: 1,
@@ -665,14 +715,14 @@ const createHourRectangles = (
         ease: 'back.out(1.5)'
       });
 
-      gsap.to(hourCell.userData.hourMaterial, {
+      gsap.to(child.userData.hourMaterial, {
         opacity: 0.8,
         duration: 0.4,
         delay: idx * 0.03,
         ease: 'power1.inOut'
       });
 
-      gsap.to(hourCell.userData.labelMaterial, {
+      gsap.to(child.userData.labelMaterial, {
         opacity: 1,
         duration: 0.4,
         delay: idx * 0.03 + 0.1,
@@ -683,7 +733,7 @@ const createHourRectangles = (
   });
 };
 
-// Fixed focusOnHour function with closer camera view
+// Fixed focusOnHour function
 export const focusOnHour = (
   refs: GridRefs,
   hourMesh: THREE.Mesh,
@@ -692,6 +742,9 @@ export const focusOnHour = (
   if (!refs.grid.current || !refs.camera.current) return;
 
   moveCamera(refs, hourMesh, HOUR_CAMERA_DISTANCE);
+
+  // Adjust tilt for better visibility
+  setTilt(refs, VERY_CLOSEUP_TILT);
 
   // Use an onUpdate callback to continually update the lookAt during animation
   gsap.to({ progress: 0 }, {
@@ -762,7 +815,7 @@ export const focusOnMinute59WithSeconds = (
   focusOnMinute(refs, minute59Cell, onComplete);
 };
 
-// Create 60 rectangles representing minutes
+// Modified createMinuteRectangles function
 const createMinuteRectangles = (
   refs: GridRefs,
   hourCell: THREE.Object3D,
@@ -772,7 +825,14 @@ const createMinuteRectangles = (
 
   // Create a group to hold all minute rectangles
   const minutesGroup = new THREE.Group();
-  minutesGroup.position.copy(hourCell.position);
+
+  // Get the world position of the hour cell to properly position minutes
+  const hourPosition = new THREE.Vector3();
+  hourCell.getWorldPosition(hourPosition);
+  minutesGroup.position.copy(hourPosition);
+
+  // Add a small offset to ensure minutes appear in front of the hour cell
+  minutesGroup.position.z += 0.05;
 
   // Size of the original hour cell
   const cellWidth = hourCell.children[0].geometry.parameters.width * 1.5;
@@ -846,7 +906,7 @@ const createMinuteRectangles = (
     minutesGroup.add(minuteMesh);
   }
 
-  // Add minutes group to the scene
+  // Add minutes group to the scene, not as a child of the hour cell
   refs.scene.current.add(minutesGroup);
 
   // Store reference to minutes group
@@ -855,6 +915,18 @@ const createMinuteRectangles = (
   // Animate minutes appearing sequentially
   minutesGroup.children.forEach((minuteCell, idx) => {
     if (minuteCell.userData.minuteMaterial && minuteCell.userData.labelMaterial) {
+      // Start with a smaller scale for better appearance animation
+      minuteCell.scale.set(0.4, 0.4, 0.4);
+
+      gsap.to(minuteCell.scale, {
+        x: 1,
+        y: 1,
+        z: 1,
+        duration: 0.4,
+        delay: idx * 0.01,
+        ease: 'back.out(1.5)'
+      });
+
       gsap.to(minuteCell.userData.minuteMaterial, {
         opacity: 0.8,
         duration: 0.4,
