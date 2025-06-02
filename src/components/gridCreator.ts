@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GridRefs, DateImageEntry } from './types';
+import {type GridRefs, type DateImageEntry, DARK_GRAY, BLUE, LIGHT_GRAY, RECTANGLE_RATIO} from './types'
 
 // Helper function to get the number of days in a month
 export const getDaysInMonth = (monthIndex: number): number => {
@@ -24,7 +24,9 @@ export const createMonthCell = (
   // Create the cell background
   const geometry = new THREE.PlaneGeometry(width, height);
   const material = new THREE.MeshBasicMaterial({
-    color: 0x2d3748,
+    color: DARK_GRAY,
+    // transparent: true,
+    // opacity: 0.1,
     side: THREE.DoubleSide
   });
 
@@ -54,7 +56,7 @@ export const createMonthCell = (
   });
 
   const glowBorder = new THREE.LineSegments(glowBorderGeometry, glowBorderMaterial);
-  glowBorder.position.set(0, 0, 0.02); // Slightly in front of regular border
+  glowBorder.position.set(0, 0, 0.015); // Slightly in front of regular border
   glowBorder.visible = false; // Initially hidden
   glowBorder.userData.isGlowBorder = true; // Mark this as a glow border for animation
   group.add(glowBorder);
@@ -85,13 +87,13 @@ export const createMonthLabel = (
 
   if (context) {
     context.fillStyle = '#ffffff';
-    context.font = 'bold 70px Arial';
+    context.font = '70px Arial';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText(name, 256, 64);
 
     const texture = new THREE.CanvasTexture(canvas);
-    const geometry = new THREE.PlaneGeometry(cellWidth * 0.8, cellHeight * 0.2);
+    const geometry = new THREE.PlaneGeometry(cellWidth * 0.4 * RECTANGLE_RATIO, cellHeight * 0.6);
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
@@ -113,12 +115,12 @@ export const createGrid = (refs: GridRefs, dateImages: DateImageEntry[] = []): T
   const group = new THREE.Group();
 
   // Grid dimensions
-  const cols = 4;
-  const rows = 3;
+  const cols = 3;
+  const rows = 4;
   const spacing = 0.03;
 
   // Size based on aspect ratio
-  const totalWidth = 4.8;
+  const totalWidth = 3.6 * RECTANGLE_RATIO
   const totalHeight = 3.6;
 
   const cellWidth = (totalWidth - (spacing * (cols - 1))) / cols;
@@ -244,7 +246,7 @@ const createDaysForMonth = (
     // Create day cell with highlight if it has an image
     const dayGeometry = new THREE.PlaneGeometry(dayWidth * 0.9, dayHeight * 0.9);
     const dayMaterial = new THREE.MeshBasicMaterial({
-      color: hasImage ? 0x4a9cff : 0x3a4a5c, // Highlight color for days with images
+      color: hasImage ? BLUE : LIGHT_GRAY, // Highlight color for days with images
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import type { GridRectangleProps, GridRefs, DateImageEntry } from './types';
+import {type GridRectangleProps, type GridRefs, type DateImageEntry, INITIAL_Z} from './types'
 import { createGrid } from './gridCreator';
 import { updateGlowingBorders } from './animationUtils';
 import { handleMouseClick, handleGridAction } from './eventHandlers';
@@ -64,11 +64,12 @@ const GridRectangle = ({ width, height, dateImages = [] }: GridRectangleProps) =
     // Create scene, camera, and renderer
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    scene.background = new THREE.Color(0x1a202c); // Dark background
+    scene.background = new THREE.Color(0x010101); // Dark background
+    // scene.background = new THREE.Color(0x1a202c); // Dark background
 
-    const camera = new THREE.PerspectiveCamera(75, targetAspectRatio, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(15, targetAspectRatio, 0.01, 1000);
     cameraRef.current = camera;
-    camera.position.z = 5;
+    camera.position.z = INITIAL_Z;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     rendererRef.current = renderer;

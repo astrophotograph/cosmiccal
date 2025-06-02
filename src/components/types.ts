@@ -1,5 +1,14 @@
 import * as THREE from 'three';
 
+export const INITIAL_Z = 30
+export const DARK_GRAY = 0x2d3748
+export const LIGHT_GRAY = 0x3a4a5c
+export const BLUE = 0x4a9cff
+export const OTHER_BLUE = 0x3a86ff
+
+export const RECTANGLE_RATIO = 2.5
+export const Z_SEPARATION = 0.00005
+
 export type DateImageEntry = {
   date: Date;
   imageUrl: string;
