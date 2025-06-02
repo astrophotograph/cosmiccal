@@ -190,7 +190,7 @@ export const createGrid = (refs: GridRefs, dateImages: DateImageEntry[] = []): T
   return group;
 };
 
-export const createDaysForMonth = (
+const createDaysForMonth = (
   monthIndex: number,
   monthName: string,
   cellWidth: number,
@@ -213,9 +213,6 @@ export const createDaysForMonth = (
   // Starting position (top-left corner)
   const dayStartX = -cellWidth / 2 + dayWidth / 2;
   const dayStartY = cellHeight / 2 - dayHeight / 2;
-
-  // Get current year
-  const currentYear = new Date().getFullYear();
 
   // In the createDaysForMonth function, modify the daysWithImages map
   // to include text data
@@ -254,7 +251,7 @@ export const createDaysForMonth = (
     });
 
     const dayMesh = new THREE.Mesh(dayGeometry, dayMaterial);
-    dayMesh.position.set(dayX, dayY, 0.03);
+    dayMesh.position.set(dayX, dayY, 0.01);
 
     // Add day number
     const dayCanvas = document.createElement('canvas');
