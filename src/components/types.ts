@@ -27,6 +27,7 @@ export type GridRefs = {
   monthPositions: React.MutableRefObject<MonthPosition[]>;
   monthLabels: React.MutableRefObject<THREE.Mesh[]>;
   dayGroups: React.MutableRefObject<THREE.Group[]>;
+  hourGroups: React.MutableRefObject<THREE.Group[]>;
   raycaster: React.MutableRefObject<THREE.Raycaster>;
   mouse: React.MutableRefObject<THREE.Vector2>;
   currentMonthIndex: React.MutableRefObject<number>;
