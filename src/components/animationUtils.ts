@@ -356,29 +356,6 @@ export const focusOnMonth = (
 
 
   moveCamera(refs, monthCell, MONTH_CAMERA_DISTANCE);
-  // // Create a new vector to track the target world position of the month
-  // const targetPosition = new THREE.Vector3();
-  // monthCell.getWorldPosition(targetPosition);
-  //
-  // // Calculate camera position with the reduced tilt
-  // const cameraTargetX = targetPosition.x;
-  // const cameraTargetY = targetPosition.y;
-  // const cameraTargetZ = MONTH_CAMERA_DISTANCE
-  //
-  // console.log('monthIndex: ', monthIndex);
-  // console.log('targetPosition: ', targetPosition);
-  // console.log('cameraTargetX: ', cameraTargetX);
-  // console.log('cameraTargetY: ', cameraTargetY);
-  // console.log('cameraTargetZ: ', cameraTargetZ);
-  //
-  // // Animate camera to new position
-  // gsap.to(refs.camera.current.position, {
-  //   x: cameraTargetX,
-  //   y: cameraTargetY,
-  //   z: cameraTargetZ,
-  //   duration: 1.5,
-  //   ease: 'power2.inOut'
-  // });
 
   setTilt(refs, CLOSEUP_TILT)
 
@@ -532,23 +509,6 @@ export const focusOnDecember31WithHours = (
   const dec31Cell = dayGroup.children[dec31Index];
 
   moveCamera(refs, dec31Cell, DAY_CAMERA_DISTANCE);
-  // // Get the Dec 31 position in world coordinates
-  // const dec31Position = new THREE.Vector3();
-  // dec31Cell.getWorldPosition(dec31Position);
-  //
-  // // Calculate camera position with reduced tilt
-  // const cameraTargetX = dec31Position.x;
-  // const cameraTargetY = dec31Position.y;
-  // const cameraTargetZ = DAY_CAMERA_DISTANCE
-  //
-  // // Move camera to the new position
-  // gsap.to(refs.camera.current.position, {
-  //   x: cameraTargetX,
-  //   y: cameraTargetY, // + yOffset,
-  //   z: cameraTargetZ,
-  //   duration: 1.5,
-  //   ease: 'power2.inOut'
-  // });
 
   setTilt(refs, VERY_CLOSEUP_TILT);
 
@@ -732,24 +692,6 @@ export const focusOnHour = (
   if (!refs.grid.current || !refs.camera.current) return;
 
   moveCamera(refs, hourMesh, HOUR_CAMERA_DISTANCE);
-  // // Get the hour position in world coordinates
-  // const hourPosition = new THREE.Vector3();
-  // hourMesh.getWorldPosition(hourPosition);
-  //
-  // // Calculate camera position with reduced tilt
-  // const cameraTargetX = hourPosition.x;
-  // const cameraTargetY = hourPosition.y;
-  // const cameraTargetZ = HOUR_CAMERA_DISTANCE
-  //
-  // // Move camera to the new position
-  // gsap.to(refs.camera.current.position, {
-  //   x: cameraTargetX,
-  //   y: cameraTargetY,
-  //   z: cameraTargetZ,
-  //   duration: 1.5,
-  //   ease: 'power2.inOut'
-  // });
-  //
 
   // Use an onUpdate callback to continually update the lookAt during animation
   gsap.to({ progress: 0 }, {
@@ -940,25 +882,7 @@ export const focusOnMinute = (
   if (!refs.grid.current || !refs.camera.current) return;
 
   moveCamera(refs, minuteMesh, MINUTE_CAMERA_DISTANCE);
-  // // Get the minute position in world coordinates
-  // const minutePosition = new THREE.Vector3();
-  // minuteMesh.getWorldPosition(minutePosition);
-  //
-  // // Calculate camera position with reduced tilt
-  // const cameraTargetX = minutePosition.x;
-  // const cameraTargetY = minutePosition.y;
-  // const cameraTargetZ = MINUTE_CAMERA_DISTANCE
-  //
-  // // Move camera to the new position
-  // gsap.to(refs.camera.current.position, {
-  //   x: cameraTargetX,
-  //   y: cameraTargetY,
-  //   z: cameraTargetZ,
-  //   duration: 1.5,
-  //   ease: 'power2.inOut'
-  // });
-  //
-  // Use an onUpdate callback to continually update the lookAt during animation
+
   gsap.to({ progress: 0 }, {
     progress: 1,
     duration: 1.5,
